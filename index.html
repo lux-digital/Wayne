@@ -62,6 +62,17 @@
 
     #hero.scrolling-away #hero-high-res { opacity: 0; }
 
+    /* Product playback always takes visual priority over the scroll-zoom layer. */
+    #hero.product-flow #hero-sequence {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    #hero.product-flow #hero-high-res {
+      opacity: 1;
+      transition: none;
+    }
+
     #over-layer {
       position: absolute;
       inset: 0;
@@ -721,7 +732,7 @@
       const DIALOG_REVEAL_LEAD = 380;
       const HOTSPOT_RETURN_LEAD = 360;
       const SCROLL_ZOOM_DISTANCE_FACTOR = 0.84;
-      const SCROLL_SEQUENCE_START_THRESHOLD = 0.012;
+      const SCROLL_SEQUENCE_START_THRESHOLD = 0.10;
       const SCROLL_HIDE_THRESHOLD = 0.24;
       const SCROLL_SHOW_THRESHOLD = 0.34;
       const SCROLL_FORCE_SHOW_THRESHOLD = 0.14;
@@ -1319,9 +1330,8 @@
           return;
         }
 
-        displayScrollFrame(scrollProgress);
-
         if (scrollProgress > SCROLL_SEQUENCE_START_THRESHOLD) {
+          displayScrollFrame(scrollProgress);
           if (!hero.classList.contains("scrolling-away")) clearOverState();
           hero.classList.add("scrolling-away");
         } else {
@@ -1550,6 +1560,10 @@
 
         hoveredMenuProduct = null;
         registerPanInteraction();
+        cancelPanAnimation();
+        hero.classList.remove("scrolling-away");
+        hero.classList.add("product-flow");
+        displayScrollFrame(0);
         isBusy = true;
         productFlowActive = true;
         selectedProduct = hotspot.product;
@@ -1594,6 +1608,7 @@
         selectedProduct = null;
         isBusy = false;
         productFlowActive = false;
+        hero.classList.remove("product-flow");
         scheduleScrollUpdate();
       }
 
