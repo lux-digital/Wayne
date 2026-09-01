@@ -27,6 +27,7 @@
     button { font: inherit; }
 
     #hero {
+      --pan-position: 50%;
       position: relative;
       width: 100%;
       height: 100vh;
@@ -36,6 +37,8 @@
       isolation: isolate;
     }
 
+    #hero.pan-enabled { touch-action: pan-y; }
+
     .hero-frame {
       position: absolute;
       inset: 0;
@@ -43,7 +46,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: center;
+      object-position: var(--pan-position) center;
       user-select: none;
       pointer-events: none;
       -webkit-user-drag: none;
@@ -189,6 +192,132 @@
       opacity: 0;
       transform: translateY(24px);
       pointer-events: none;
+    }
+
+    #pan-controls {
+      position: absolute;
+      bottom: calc(var(--menu-height) + 14px);
+      left: 50%;
+      z-index: 6;
+      display: flex;
+      width: min(760px, calc(100% - 24px));
+      height: 56px;
+      padding: 8px 10px;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.30);
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      backdrop-filter: blur(var(--glass-blur));
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+      opacity: 0;
+      transform: translate(-50%, 18px) scale(0.98);
+      pointer-events: none;
+      transition:
+        opacity 760ms ease,
+        transform 980ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #hero.pan-enabled.ui-ready:not(.sequence-active) #pan-controls {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+      pointer-events: auto;
+    }
+
+    .pan-arrow {
+      display: grid;
+      flex: 0 0 38px;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.34);
+      cursor: pointer;
+      transition: color 180ms ease, background 180ms ease, transform 180ms ease;
+    }
+
+    .pan-arrow svg {
+      width: 19px;
+      height: 19px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2.4;
+    }
+
+    .pan-arrow:hover,
+    .pan-arrow:focus-visible {
+      color: #ffc01e;
+      background: rgba(255, 192, 30, 0.16);
+      outline: none;
+      transform: scale(1.08);
+    }
+
+    #pan-slider {
+      --slider-fill: 50%;
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 28px;
+      margin: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #pan-slider:active { cursor: grabbing; }
+
+    #pan-slider::-webkit-slider-runnable-track {
+      height: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        #fff 0,
+        #fff var(--slider-fill),
+        rgba(255, 255, 255, 0.22) var(--slider-fill),
+        rgba(255, 255, 255, 0.22) 100%
+      );
+    }
+
+    #pan-slider::-webkit-slider-thumb {
+      width: 17px;
+      height: 17px;
+      margin-top: -7px;
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    #pan-slider::-moz-range-track {
+      height: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    #pan-slider::-moz-range-progress {
+      height: 5px;
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    #pan-slider::-moz-range-thumb {
+      width: 17px;
+      height: 17px;
+      border: 0;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
     .product-button {
@@ -434,7 +563,7 @@
       to { transform: rotate(360deg); }
     }
 
-    @media (max-width: 760px) {
+    @media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
       :root {
         --menu-height: 190px;
         --hotspot-size: 44px;
@@ -444,6 +573,20 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-rows: repeat(2, minmax(0, 1fr));
         padding: 8px;
+      }
+
+      #pan-controls {
+        bottom: calc(var(--menu-height) + 10px);
+        width: calc(100% - 18px);
+        height: 52px;
+        padding: 7px 9px;
+        gap: 8px;
+      }
+
+      .pan-arrow {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
       }
 
       .product-button {
@@ -483,6 +626,16 @@
     </div>
 
     <div id="hotspot-layer" aria-label="Product hotspots"></div>
+
+    <div id="pan-controls" aria-label="Horizontal panorama controls">
+      <button id="pan-left" class="pan-arrow" type="button" aria-label="Pan image left">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>
+      </button>
+      <input id="pan-slider" type="range" min="0" max="1000" value="500" aria-label="Horizontal image position" />
+      <button id="pan-right" class="pan-arrow" type="button" aria-label="Pan image right">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+      </button>
+    </div>
 
     <nav id="product-menu" aria-label="Product categories">
       <button class="product-button" type="button" data-product="lux">
@@ -568,9 +721,18 @@
       const DIALOG_REVEAL_LEAD = 380;
       const HOTSPOT_RETURN_LEAD = 360;
       const SCROLL_ZOOM_DISTANCE_FACTOR = 0.84;
-      const SCROLL_HIDE_THRESHOLD = 0.018;
-      const SCROLL_SHOW_THRESHOLD = 0.14;
-      const SCROLL_FORCE_SHOW_THRESHOLD = 0.006;
+      const SCROLL_SEQUENCE_START_THRESHOLD = 0.012;
+      const SCROLL_HIDE_THRESHOLD = 0.24;
+      const SCROLL_SHOW_THRESHOLD = 0.34;
+      const SCROLL_FORCE_SHOW_THRESHOLD = 0.14;
+      const PAN_AUTO_START_DELAY = 3200;
+      const PAN_AUTO_RESUME_DELAY = 4000;
+      const PAN_EDGE_PAUSE = 1500;
+      const PAN_AUTO_FULL_DURATION = 12500;
+      const PAN_BUTTON_HOVER_DURATION = 1550;
+      const PAN_ARROW_STEP = 0.18;
+      const PAN_DRAG_FRICTION = 0.94;
+      const PAN_DRAG_THRESHOLD = 5;
 
       const PRODUCT_DETAILS = {
         lux: { label: "LUX Architectural Products", icon: "Logo's/LUX-Icon.svg" },
@@ -602,6 +764,11 @@
       const dialogClose = document.getElementById("dialog-close");
       const loadingOverlay = document.getElementById("loading-overlay");
       const lottieLoader = document.getElementById("lottie-loader");
+      const panControls = document.getElementById("pan-controls");
+      const panSlider = document.getElementById("pan-slider");
+      const panLeft = document.getElementById("pan-left");
+      const panRight = document.getElementById("pan-right");
+      const desktopHoverQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
       const introFrames = [];
       const heroFrames = [];
       let activeOverProduct = null;
@@ -620,6 +787,23 @@
       let scrollUpdatePending = false;
       let externalScrollControl = false;
       let readScrollProgress = () => scrollProgress;
+      let panProgress = 0.5;
+      let panEnabled = false;
+      let panAnimationFrame = 0;
+      let panAnimationIsAuto = false;
+      let panAutoTimer = 0;
+      let panAutoCancelled = false;
+      let panAutoDirection = 1;
+      let panPointerId = null;
+      let panPointerStartX = 0;
+      let panPointerStartY = 0;
+      let panLastX = 0;
+      let panLastTime = 0;
+      let panVelocity = 0;
+      let panGestureState = "idle";
+      let suppressHotspotClick = false;
+      let panResizePending = false;
+      let hoveredMenuProduct = null;
 
       function rainwareIcon() {
         return `<svg viewBox="0 0 72 64" aria-hidden="true">
@@ -745,20 +929,303 @@
         const scale = Math.max(containerWidth / imageWidth, containerHeight / imageHeight);
         const renderedWidth = imageWidth * scale;
         const renderedHeight = imageHeight * scale;
+        const overflowX = Math.max(renderedWidth - containerWidth, 0);
         return {
-          offsetX: (containerWidth - renderedWidth) / 2,
+          offsetX: -overflowX * panProgress,
           offsetY: (containerHeight - renderedHeight) / 2,
           renderedWidth,
-          renderedHeight
+          renderedHeight,
+          overflowX
         };
       }
 
-      function positionHotspots() {
-        const metrics = getCoverMetrics();
+      function positionHotspots(metrics = getCoverMetrics()) {
         hotspotLayer.querySelectorAll(".hotspot").forEach((button) => {
           button.style.left = `${metrics.offsetX + (Number(button.dataset.x) / 100) * metrics.renderedWidth}px`;
           button.style.top = `${metrics.offsetY + (Number(button.dataset.y) / 100) * metrics.renderedHeight}px`;
         });
+      }
+
+      function setPanProgress(progress) {
+        panProgress = clamp(progress, 0, 1);
+        hero.style.setProperty("--pan-position", `${panProgress * 100}%`);
+        const metrics = getCoverMetrics();
+
+        /* Keep hotspots on the exact same source-image coordinates as every frame. */
+        positionHotspots(metrics);
+        panSlider.value = String(Math.round(panProgress * 1000));
+        panSlider.style.setProperty("--slider-fill", `${panProgress * 100}%`);
+      }
+
+      function easeInOutQuint(progress) {
+        return progress < 0.5
+          ? 16 * progress ** 5
+          : 1 - ((-2 * progress + 2) ** 5) / 2;
+      }
+
+      function easeInOutExpo(progress) {
+        if (progress === 0 || progress === 1) return progress;
+        return progress < 0.5
+          ? (2 ** (20 * progress - 10)) / 2
+          : (2 - 2 ** (-20 * progress + 10)) / 2;
+      }
+
+      function cancelPanAnimation(autoOnly = false) {
+        if (autoOnly && !panAnimationIsAuto) return;
+        if (panAnimationFrame) cancelAnimationFrame(panAnimationFrame);
+        panAnimationFrame = 0;
+        panAnimationIsAuto = false;
+      }
+
+      function animatePanTo(
+        target,
+        duration,
+        onComplete = null,
+        isAuto = false,
+        easing = easeInOutQuint
+      ) {
+        cancelPanAnimation();
+        const start = panProgress;
+        const distance = target - start;
+
+        if (Math.abs(distance) < 0.0001) {
+          setPanProgress(target);
+          if (onComplete) onComplete();
+          return;
+        }
+
+        const startTime = performance.now();
+        panAnimationIsAuto = isAuto;
+
+        function update(now) {
+          const elapsed = clamp((now - startTime) / duration, 0, 1);
+          setPanProgress(start + distance * easing(elapsed));
+
+          if (elapsed < 1) {
+            panAnimationFrame = requestAnimationFrame(update);
+          } else {
+            panAnimationFrame = 0;
+            panAnimationIsAuto = false;
+            if (onComplete) onComplete();
+          }
+        }
+
+        panAnimationFrame = requestAnimationFrame(update);
+      }
+
+      function clearAutoPanTimer() {
+        window.clearTimeout(panAutoTimer);
+        panAutoTimer = 0;
+      }
+
+      function autoPanIsBlocked() {
+        return (
+          !experienceReady ||
+          productFlowActive ||
+          isBusy ||
+          scrollAwayActive ||
+          scrollProgress > SCROLL_SEQUENCE_START_THRESHOLD ||
+          hoveredMenuProduct !== null ||
+          dialogLayer.classList.contains("is-open")
+        );
+      }
+
+      function tryResumeAutoPan() {
+        if (!panEnabled) {
+          panAutoCancelled = false;
+          panAutoTimer = 0;
+          return;
+        }
+
+        if (autoPanIsBlocked()) {
+          panAutoTimer = window.setTimeout(tryResumeAutoPan, 300);
+          return;
+        }
+
+        panAutoCancelled = false;
+        panAutoTimer = 0;
+        startAutoPan();
+      }
+
+      function scheduleAutoPanResume() {
+        clearAutoPanTimer();
+        panAutoTimer = window.setTimeout(tryResumeAutoPan, PAN_AUTO_RESUME_DELAY);
+      }
+
+      function registerPanInteraction() {
+        panAutoCancelled = true;
+        clearAutoPanTimer();
+        cancelPanAnimation(true);
+        scheduleAutoPanResume();
+      }
+
+      function startAutoPan() {
+        if (
+          !panEnabled ||
+          panAutoCancelled ||
+          autoPanIsBlocked()
+        ) return;
+
+        let target = panAutoDirection > 0 ? 1 : 0;
+        if (Math.abs(target - panProgress) < 0.002) {
+          panAutoDirection *= -1;
+          target = panAutoDirection > 0 ? 1 : 0;
+        }
+
+        const duration = Math.max(2100, PAN_AUTO_FULL_DURATION * Math.abs(target - panProgress));
+        animatePanTo(target, duration, () => {
+          if (panAutoCancelled || !panEnabled) return;
+          panAutoDirection *= -1;
+          panAutoTimer = window.setTimeout(startAutoPan, PAN_EDGE_PAUSE);
+        }, true);
+      }
+
+      function scheduleAutoPan() {
+        if (!panEnabled || panAutoCancelled || !experienceReady) return;
+        clearAutoPanTimer();
+        panAutoTimer = window.setTimeout(startAutoPan, PAN_AUTO_START_DELAY);
+      }
+
+      function updatePanAvailability() {
+        const shouldEnable = getCoverMetrics().overflowX > 2;
+        panEnabled = shouldEnable;
+        hero.classList.toggle("pan-enabled", shouldEnable);
+
+        if (!shouldEnable) {
+          clearAutoPanTimer();
+          cancelPanAnimation();
+          setPanProgress(0.5);
+          return;
+        }
+
+        setPanProgress(panProgress);
+        scheduleAutoPan();
+      }
+
+      function startPanInertia(initialVelocity) {
+        cancelPanAnimation();
+        let velocity = initialVelocity;
+        let previousTime = performance.now();
+
+        function update(now) {
+          const frameScale = Math.min((now - previousTime) / (1000 / 60), 2.5);
+          previousTime = now;
+          velocity *= PAN_DRAG_FRICTION ** frameScale;
+          const previousProgress = panProgress;
+          setPanProgress(panProgress + velocity * frameScale);
+          const hitBoundary = panProgress === previousProgress && Math.abs(velocity) > 0;
+
+          if (Math.abs(velocity) > 0.00008 && !hitBoundary) {
+            panAnimationFrame = requestAnimationFrame(update);
+          } else {
+            panAnimationFrame = 0;
+            scheduleAutoPanResume();
+          }
+        }
+
+        panAnimationFrame = requestAnimationFrame(update);
+      }
+
+      function bindPanEvents() {
+        let startedOnHotspot = false;
+
+        hero.addEventListener("pointerdown", (event) => {
+          registerPanInteraction();
+          if (!panEnabled || event.button > 0) return;
+          if (event.target.closest("#pan-controls, #product-menu, #dialog-layer, #loading-overlay")) return;
+
+          cancelPanAnimation();
+          panPointerId = event.pointerId;
+          panPointerStartX = event.clientX;
+          panPointerStartY = event.clientY;
+          panLastX = event.clientX;
+          panLastTime = performance.now();
+          panVelocity = 0;
+          panGestureState = "pending";
+          startedOnHotspot = Boolean(event.target.closest(".hotspot"));
+        });
+
+        hero.addEventListener("pointermove", (event) => {
+          if (event.pointerId !== panPointerId || panGestureState === "idle") return;
+          const totalX = event.clientX - panPointerStartX;
+          const totalY = event.clientY - panPointerStartY;
+
+          if (panGestureState === "pending") {
+            if (Math.hypot(totalX, totalY) < PAN_DRAG_THRESHOLD) return;
+
+            if (event.pointerType !== "mouse" && Math.abs(totalY) > Math.abs(totalX)) {
+              panGestureState = "idle";
+              panPointerId = null;
+              if (hero.hasPointerCapture?.(event.pointerId)) hero.releasePointerCapture(event.pointerId);
+              return;
+            }
+
+            panGestureState = "dragging";
+            hero.setPointerCapture?.(event.pointerId);
+            if (startedOnHotspot) suppressHotspotClick = true;
+          }
+
+          if (panGestureState !== "dragging") return;
+          event.preventDefault();
+          const now = performance.now();
+          const elapsed = Math.max(now - panLastTime, 1);
+          const overflowX = Math.max(getCoverMetrics().overflowX, 1);
+          const previousProgress = panProgress;
+          setPanProgress(panProgress - (event.clientX - panLastX) / overflowX);
+          panVelocity = ((panProgress - previousProgress) / elapsed) * (1000 / 60);
+          panLastX = event.clientX;
+          panLastTime = now;
+        });
+
+        function endPointerPan(event) {
+          if (event.pointerId !== panPointerId) return;
+          const wasDragging = panGestureState === "dragging";
+          panGestureState = "idle";
+          panPointerId = null;
+          if (hero.hasPointerCapture?.(event.pointerId)) hero.releasePointerCapture(event.pointerId);
+
+          if (wasDragging) {
+            startPanInertia(panVelocity);
+            window.setTimeout(() => { suppressHotspotClick = false; }, 0);
+          }
+
+          if (panResizePending) {
+            panResizePending = false;
+            updatePanAvailability();
+          }
+        }
+
+        hero.addEventListener("pointerup", endPointerPan);
+        hero.addEventListener("pointercancel", endPointerPan);
+
+        panSlider.addEventListener("pointerdown", () => {
+          registerPanInteraction();
+          cancelPanAnimation();
+        });
+        panSlider.addEventListener("input", () => {
+          registerPanInteraction();
+          setPanProgress(Number(panSlider.value) / 1000);
+        });
+        panSlider.addEventListener("change", scheduleAutoPanResume);
+
+        panLeft.addEventListener("click", () => {
+          registerPanInteraction();
+          animatePanTo(
+            clamp(panProgress - PAN_ARROW_STEP, 0, 1),
+            900,
+            scheduleAutoPanResume
+          );
+        });
+        panRight.addEventListener("click", () => {
+          registerPanInteraction();
+          animatePanTo(
+            clamp(panProgress + PAN_ARROW_STEP, 0, 1),
+            900,
+            scheduleAutoPanResume
+          );
+        });
+
+        hero.addEventListener("wheel", registerPanInteraction, { passive: true });
       }
 
       function renderHotspots() {
@@ -779,7 +1246,15 @@
           button.style.setProperty("--hide-delay", `${(leftToRight.length - 1 - index) * 110}ms`);
           button.setAttribute("aria-label", product.label);
           button.innerHTML = product.inlineIcon ? rainwareIcon() : `<img src="${product.icon}" alt="" />`;
-          button.addEventListener("click", () => openProduct(hotspot));
+          button.addEventListener("click", (event) => {
+            if (suppressHotspotClick) {
+              suppressHotspotClick = false;
+              event.preventDefault();
+              event.stopPropagation();
+              return;
+            }
+            openProduct(hotspot);
+          });
           hotspotLayer.appendChild(button);
         });
         positionHotspots();
@@ -838,16 +1313,25 @@
         const scrollingUp = nextProgress < scrollProgress - 0.0005;
         scrollProgress = nextProgress;
 
+        if (scrollingDown || scrollingUp) registerPanInteraction();
+
         if (!experienceReady || productFlowActive || isBusy || dialogLayer.classList.contains("is-open")) {
           return;
         }
 
         displayScrollFrame(scrollProgress);
 
+        if (scrollProgress > SCROLL_SEQUENCE_START_THRESHOLD) {
+          if (!hero.classList.contains("scrolling-away")) clearOverState();
+          hero.classList.add("scrolling-away");
+        } else {
+          hero.classList.remove("scrolling-away");
+          displayScrollFrame(0);
+        }
+
         if (scrollingDown && scrollProgress > SCROLL_HIDE_THRESHOLD && !scrollAwayActive) {
           scrollAwayActive = true;
-          clearOverState();
-          hero.classList.add("scrolling-away", "sequence-active");
+          hero.classList.add("sequence-active");
           hero.classList.remove("hotspots-visible");
         } else if (
           scrollAwayActive &&
@@ -857,8 +1341,6 @@
           )
         ) {
           scrollAwayActive = false;
-          hero.classList.remove("scrolling-away");
-          displayScrollFrame(0);
           showInterface();
         }
       }
@@ -975,7 +1457,14 @@
         document.querySelectorAll("[data-product]").forEach((element) => {
           if (element.classList.contains("product-over")) return;
           const product = element.dataset.product;
-          element.addEventListener("pointerenter", () => showOverState(product));
+          element.addEventListener("pointerenter", () => {
+            const portraitButtonPan = (
+              element.classList.contains("product-button") &&
+              desktopHoverQuery.matches &&
+              panEnabled
+            );
+            if (!portraitButtonPan) showOverState(product);
+          });
           element.addEventListener("pointerleave", () => hideOverState(product));
           element.addEventListener("focus", () => showOverState(product));
           element.addEventListener("blur", () => hideOverState(product));
@@ -987,6 +1476,47 @@
           const matchingHotspot = hotspots.find((hotspot) => hotspot.product === button.dataset.product);
           if (matchingHotspot) {
             button.addEventListener("click", () => openProduct(matchingHotspot));
+            button.addEventListener("pointerenter", () => {
+              if (
+                !desktopHoverQuery.matches ||
+                !panEnabled ||
+                !experienceReady ||
+                productFlowActive ||
+                isBusy ||
+                scrollAwayActive ||
+                dialogLayer.classList.contains("is-open")
+              ) return;
+
+              hoveredMenuProduct = matchingHotspot.product;
+              registerPanInteraction();
+              const metrics = getCoverMetrics();
+              const sourceX = (matchingHotspot.x / 100) * metrics.renderedWidth;
+              const targetProgress = clamp(
+                (sourceX - hero.clientWidth / 2) / Math.max(metrics.overflowX, 1),
+                0,
+                1
+              );
+              animatePanTo(
+                targetProgress,
+                PAN_BUTTON_HOVER_DURATION,
+                () => {
+                  if (
+                    hoveredMenuProduct === matchingHotspot.product &&
+                    desktopHoverQuery.matches &&
+                    panEnabled &&
+                    !productFlowActive &&
+                    !isBusy
+                  ) showOverState(matchingHotspot.product);
+                },
+                false,
+                easeInOutExpo
+              );
+            });
+            button.addEventListener("pointerleave", () => {
+              if (hoveredMenuProduct !== matchingHotspot.product) return;
+              hoveredMenuProduct = null;
+              registerPanInteraction();
+            });
           }
         });
       }
@@ -1018,6 +1548,8 @@
       async function openProduct(hotspot) {
         if (isBusy || dialogLayer.classList.contains("is-open")) return;
 
+        hoveredMenuProduct = null;
+        registerPanInteraction();
         isBusy = true;
         productFlowActive = true;
         selectedProduct = hotspot.product;
@@ -1044,6 +1576,7 @@
       async function closeProduct() {
         if (isBusy || !dialogLayer.classList.contains("is-open")) return;
 
+        registerPanInteraction();
         isBusy = true;
         dialogLayer.classList.remove("is-open");
         dialogLayer.setAttribute("aria-hidden", "true");
@@ -1077,6 +1610,7 @@
         await playIntro();
         if (await highResReady) highResImage.classList.add("is-visible");
         renderHotspots();
+        updatePanAvailability();
         bindOverStateEvents();
         bindProductButtonClicks();
         loadOverStates();
@@ -1085,12 +1619,21 @@
           requestAnimationFrame(() => {
             hero.classList.add("hotspots-visible");
             experienceReady = true;
+            scheduleAutoPan();
             scheduleScrollUpdate();
           });
         });
       }
 
-      window.addEventListener("resize", positionHotspots);
+      function handleViewportResize() {
+        if (panPointerId !== null) {
+          panResizePending = true;
+          return;
+        }
+        updatePanAvailability();
+      }
+
+      window.addEventListener("resize", handleViewportResize);
       dialogClose.addEventListener("click", closeProduct);
       dialogLayer.addEventListener("pointerdown", (event) => {
         if (event.target === dialogLayer) closeProduct();
@@ -1110,6 +1653,7 @@
         applyScrollProgress(progress);
       });
       initializeLottieLoader();
+      bindPanEvents();
       setupScrollExperience();
       startHero();
     })();
