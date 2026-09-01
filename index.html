@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Hotspot Hero</title>
+
+  <style>
+    :root {
+      --hotspot-size: clamp(44px, 3.2vw, 58px);
+      --menu-height: clamp(150px, 19vh, 230px);
+      --glass-blur: 10px;
+      background: #000;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow-x: hidden;
+      background: #000;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    button { font: inherit; }
+
+    #hero {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background: #000;
+      isolation: isolate;
+    }
+
+    .hero-frame {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      user-select: none;
+      pointer-events: none;
+      -webkit-user-drag: none;
+    }
+
+    #hero-high-res {
+      z-index: 1;
+      opacity: 0;
+      transition: opacity 220ms linear;
+    }
+
+    #hero-high-res.is-visible { opacity: 1; }
+
+    #hero.scrolling-away #hero-high-res { opacity: 0; }
+
+    #over-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .product-over {
+      opacity: 0;
+      transition: opacity 520ms ease;
+    }
+
+    .product-over.is-visible { opacity: 1; }
+
+    #hotspot-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .hotspot {
+      position: absolute;
+      display: grid;
+      width: var(--hotspot-size);
+      height: var(--hotspot-size);
+      padding: 0;
+      place-items: center;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.16);
+      border: 0;
+      border-radius: 50%;
+      background: #050505;
+      box-shadow: 0 0 0 11px rgba(0, 0, 0, 0.16);
+      cursor: pointer;
+      pointer-events: none;
+      transition:
+        opacity 580ms ease var(--hide-delay, 0ms),
+        transform 780ms cubic-bezier(0.22, 1, 0.36, 1) var(--hide-delay, 0ms),
+        box-shadow 180ms ease;
+    }
+
+    .hotspot::after {
+      position: absolute;
+      inset: -8px;
+      z-index: -1;
+      border: 4px solid rgba(0, 0, 0, 0.58);
+      border-radius: 50%;
+      content: "";
+      opacity: 0;
+      transform: scale(0.78);
+      animation: hotspot-pulse 2.35s ease-out infinite;
+      animation-delay: calc(var(--show-delay, 0ms) + 700ms);
+      animation-play-state: paused;
+    }
+
+    #hero.hotspots-visible .hotspot {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+      transition-delay: var(--show-delay, 0ms), var(--show-delay, 0ms), 0ms;
+    }
+
+    #hero.hotspots-visible .hotspot::after {
+      animation-play-state: running;
+    }
+
+    #hero.hotspots-visible .hotspot:hover,
+    #hero.hotspots-visible .hotspot:focus-visible {
+      transform: translate(-50%, -50%) scale(1.1);
+      box-shadow: 0 0 0 13px rgba(0, 0, 0, 0.22);
+      outline: none;
+      transition-delay: 0ms;
+    }
+
+    @keyframes hotspot-pulse {
+      0% {
+        opacity: 0;
+        transform: scale(0.78);
+      }
+      20% { opacity: 0.48; }
+      72%, 100% {
+        opacity: 0;
+        transform: scale(1.45);
+      }
+    }
+
+    .hotspot img,
+    .hotspot svg {
+      display: block;
+      width: 48%;
+      height: 48%;
+      object-fit: contain;
+      color: #fff;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    #product-menu {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      height: var(--menu-height);
+      padding: 18px clamp(16px, 3vw, 54px);
+      background: rgba(0, 0, 0, 0.30);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      backdrop-filter: blur(var(--glass-blur));
+      opacity: 0;
+      transform: translateY(24px);
+      pointer-events: none;
+      transition:
+        opacity 1100ms ease,
+        transform 1350ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #hero.ui-ready #product-menu {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    #hero.sequence-active #product-menu {
+      opacity: 0;
+      transform: translateY(24px);
+      pointer-events: none;
+    }
+
+    .product-button {
+      display: flex;
+      min-width: 0;
+      padding: 12px 8px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 13px;
+      border: 0;
+      color: #fff;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .product-button__icon {
+      display: grid;
+      width: 52px;
+      height: 34px;
+      place-items: center;
+      transition: transform 180ms ease, opacity 180ms ease;
+    }
+
+    .product-button__icon img,
+    .product-button__icon svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      color: #fff;
+      filter: brightness(0) invert(1);
+    }
+
+    .product-button__label {
+      overflow: hidden;
+      max-width: 100%;
+      font-size: clamp(11px, 0.82vw, 14px);
+      line-height: 1.25;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .product-button:hover .product-button__icon,
+    .product-button:focus-visible .product-button__icon {
+      opacity: 0.8;
+      transform: translateY(-3px) scale(1.06);
+    }
+
+    .product-button:focus-visible {
+      outline: 1px solid rgba(255, 255, 255, 0.65);
+      outline-offset: -4px;
+    }
+
+    #dialog-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      padding: clamp(18px, 4vw, 60px);
+      place-items: center;
+      opacity: 0;
+      visibility: hidden;
+      background: rgba(0, 0, 0, 0.58);
+      pointer-events: none;
+      transition: opacity 420ms ease, visibility 0s linear 520ms;
+    }
+
+    #dialog-layer.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 420ms ease, visibility 0s;
+    }
+
+    #product-dialog {
+      overflow: hidden;
+      width: min(980px, 88vw);
+      max-height: min(700px, 82vh);
+      border: 1px solid rgba(255, 255, 255, 0.36);
+      border-radius: 16px;
+      background: transparent;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
+      opacity: 0;
+      transform: scale(0.68) translateY(30px);
+      transform-origin: center;
+      transition:
+        opacity 380ms ease,
+        transform 950ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #dialog-layer.is-open #product-dialog {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    .dialog-header,
+    .dialog-footer {
+      display: flex;
+      min-height: 78px;
+      padding: 16px 22px;
+      align-items: center;
+      color: #111;
+      background: #fff;
+    }
+
+    .dialog-header { justify-content: space-between; }
+
+    #dialog-brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    #dialog-brand img,
+    #dialog-brand svg {
+      display: block;
+      width: 54px;
+      height: 38px;
+      object-fit: contain;
+      filter: brightness(0);
+    }
+
+    #dialog-close {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      color: #222;
+      background: #ececec;
+      font-size: 26px;
+      line-height: 1;
+      cursor: pointer;
+      transition: transform 180ms ease, background 180ms ease;
+    }
+
+    #dialog-close:hover,
+    #dialog-close:focus-visible {
+      background: #ddd;
+      outline: none;
+      transform: rotate(90deg) scale(1.06);
+    }
+
+    .dialog-body {
+      overflow-y: auto;
+      max-height: calc(min(700px, 82vh) - 150px);
+      padding: clamp(24px, 4vw, 48px);
+      color: #fff;
+      background: rgba(0, 0, 0, 0.30);
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      backdrop-filter: blur(var(--glass-blur));
+    }
+
+    .dialog-eyebrow {
+      margin: 0 0 8px;
+      color: rgba(255, 255, 255, 0.56);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    #dialog-title {
+      margin: 0 0 12px;
+      font-size: clamp(24px, 3vw, 40px);
+      line-height: 1.05;
+    }
+
+    .dialog-copy {
+      max-width: 680px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .dialog-placeholders {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .dialog-placeholder {
+      min-height: 90px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .dialog-footer {
+      min-height: 58px;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    @media (max-width: 760px) {
+      :root {
+        --menu-height: 190px;
+        --hotspot-size: 44px;
+      }
+
+      #product-menu {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        padding: 8px;
+      }
+
+      .product-button {
+        gap: 5px;
+        padding: 6px 4px;
+      }
+
+      .product-button__icon {
+        width: 36px;
+        height: 23px;
+      }
+
+      .product-button__label { font-size: 10px; }
+      .hotspot { box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.16); }
+
+      #dialog-layer { padding: 12px; }
+      #product-dialog { width: 94vw; max-height: 82vh; }
+      .dialog-header { min-height: 64px; padding: 12px 15px; }
+      .dialog-body { padding: 22px 18px; }
+      .dialog-placeholders { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="hero" aria-label="Product hotspot hero">
+    <img id="hero-sequence" class="hero-frame" src="zoom/Intro00.jpg" alt="" draggable="false" />
+    <img id="hero-high-res" class="hero-frame" src="Sequence/hero36.jpg" alt="" draggable="false" />
+
+    <div id="over-layer" aria-hidden="true">
+      <img class="hero-frame product-over" data-product="lux" data-src="Overs/Lux.jpg" alt="" />
+      <img class="hero-frame product-over" data-product="armourSide" data-src="Overs/Armour Side.jpg" alt="" />
+      <img class="hero-frame product-over" data-product="rainware" data-src="Overs/Rainware.jpg" alt="" />
+      <img class="hero-frame product-over" data-product="soffit" data-src="Overs/Wayne.jpg" alt="" />
+      <img class="hero-frame product-over" data-product="metalLab" data-src="Overs/Metal Lab.jpg" alt="" />
+      <img class="hero-frame product-over" data-product="oronX" data-src="Overs/Orion X.jpg" alt="" />
+    </div>
+
+    <div id="hotspot-layer" aria-label="Product hotspots"></div>
+
+    <nav id="product-menu" aria-label="Product categories">
+      <button class="product-button" type="button" data-product="lux">
+        <span class="product-button__icon"><img src="Logo's/LUX-Icon.svg" alt="" /></span>
+        <span class="product-button__label">LUX Architectural Products</span>
+      </button>
+
+      <button class="product-button" type="button" data-product="armourSide">
+        <span class="product-button__icon"><img src="Logo's/ArmourSide-Icon.svg" alt="" /></span>
+        <span class="product-button__label">Armour Side</span>
+      </button>
+
+      <button class="product-button" type="button" data-product="rainware">
+        <span class="product-button__icon">
+          <svg viewBox="0 0 72 64" aria-hidden="true">
+            <path fill="currentColor" d="M53.5 21.5a16 16 0 0 0-30.2-4.7A12.5 12.5 0 1 0 14 37.5h39.5a8 8 0 0 0 0-16Z"/>
+            <path fill="currentColor" d="M18 45c0 3.2-4 7.5-4 7.5S10 48.2 10 45a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Z"/>
+          </svg>
+        </span>
+        <span class="product-button__label">Rainware</span>
+      </button>
+
+      <button class="product-button" type="button" data-product="soffit">
+        <span class="product-button__icon"><img src="Logo's/Wayne-Icon.svg" alt="" /></span>
+        <span class="product-button__label">Soffit and Fascia</span>
+      </button>
+
+      <button class="product-button" type="button" data-product="metalLab">
+        <span class="product-button__icon"><img src="Logo's/MetalLab-Icon.svg" alt="" /></span>
+        <span class="product-button__label">Metal Lab Roofing</span>
+      </button>
+
+      <button class="product-button" type="button" data-product="oronX">
+        <span class="product-button__icon"><img src="Logo's/OronX-Icon.svg" alt="" /></span>
+        <span class="product-button__label">OrionX Lighting</span>
+      </button>
+    </nav>
+
+    <div id="dialog-layer" aria-hidden="true">
+      <section id="product-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <header class="dialog-header">
+          <div id="dialog-brand"></div>
+          <button id="dialog-close" type="button" aria-label="Close product window">&times;</button>
+        </header>
+
+        <div class="dialog-body">
+          <p class="dialog-eyebrow">Product information</p>
+          <h2 id="dialog-title">Product</h2>
+          <p class="dialog-copy">
+            This window is ready for the final product description, specifications, imagery and links.
+          </p>
+          <div class="dialog-placeholders" aria-hidden="true">
+            <div class="dialog-placeholder"></div>
+            <div class="dialog-placeholder"></div>
+            <div class="dialog-placeholder"></div>
+          </div>
+        </div>
+
+        <footer class="dialog-footer">SHOP ALL</footer>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const INTRO_FPS = 24;
+      const FIRST_FRAME = 0;
+      const LAST_FRAME = 40;
+      const SEQUENCE_FPS = 24;
+      const SEQUENCE_FIRST_FRAME = 0;
+      const DEFAULT_HERO_FRAME = 36;
+      const SEQUENCE_LAST_FRAME = 71;
+      const HOTSPOT_HIDE_TIME = 1400;
+      const DIALOG_TRANSITION_TIME = 980;
+      const DIALOG_REVEAL_LEAD = 380;
+      const HOTSPOT_RETURN_LEAD = 360;
+      const SCROLL_ZOOM_DISTANCE_FACTOR = 0.72;
+      const SCROLL_HIDE_THRESHOLD = 0.018;
+      const SCROLL_SHOW_THRESHOLD = 0.008;
+
+      const PRODUCT_DETAILS = {
+        lux: { label: "LUX Architectural Products", icon: "Logo's/LUX-Icon.svg" },
+        armourSide: { label: "Armour Side", icon: "Logo's/ArmourSide-Icon.svg" },
+        rainware: { label: "Rainware", inlineIcon: true },
+        soffit: { label: "Soffit and Fascia", icon: "Logo's/Wayne-Icon.svg" },
+        metalLab: { label: "Metal Lab Roofing", icon: "Logo's/MetalLab-Icon.svg" },
+        oronX: { label: "OrionX Lighting", icon: "Logo's/OronX-Icon.svg" }
+      };
+
+      /* Paste the array produced by hotspot-recorder.html here. */
+      const hotspots = [
+        { id: "hotspot1", product: "armourSide", x: 23.24, y: 53.72 },
+        { id: "hotspot2", product: "oronX", x: 24.66, y: 35.26 },
+        { id: "hotspot3", product: "lux", x: 40.20, y: 53.79 },
+        { id: "hotspot4", product: "metalLab", x: 49.32, y: 31.56 },
+        { id: "hotspot5", product: "soffit", x: 72.61, y: 31.84 },
+        { id: "hotspot6", product: "rainware", x: 85.98, y: 44.56 }
+      ];
+
+      const hero = document.getElementById("hero");
+      const sequenceImage = document.getElementById("hero-sequence");
+      const highResImage = document.getElementById("hero-high-res");
+      const hotspotLayer = document.getElementById("hotspot-layer");
+      const overImages = [...document.querySelectorAll(".product-over")];
+      const dialogLayer = document.getElementById("dialog-layer");
+      const dialogBrand = document.getElementById("dialog-brand");
+      const dialogTitle = document.getElementById("dialog-title");
+      const dialogClose = document.getElementById("dialog-close");
+      const introFrames = [];
+      const heroFrames = [];
+      let activeOverProduct = null;
+      let heroFramesReady = Promise.resolve();
+      let currentHeroFrame = DEFAULT_HERO_FRAME;
+      let selectedProduct = null;
+      let isBusy = false;
+      let productFlowActive = false;
+      let experienceReady = false;
+      let scrollAwayActive = false;
+      let scrollProgress = 0;
+      let lastScrollFrame = LAST_FRAME;
+      let scrollUpdatePending = false;
+      let readScrollProgress = () => scrollProgress;
+
+      function rainwareIcon() {
+        return `<svg viewBox="0 0 72 64" aria-hidden="true">
+          <path fill="currentColor" d="M53.5 21.5a16 16 0 0 0-30.2-4.7A12.5 12.5 0 1 0 14 37.5h39.5a8 8 0 0 0 0-16Z"/>
+          <path fill="currentColor" d="M18 45c0 3.2-4 7.5-4 7.5S10 48.2 10 45a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Z"/>
+        </svg>`;
+      }
+
+      function introFramePath(frame) {
+        return `zoom/Intro${String(frame).padStart(2, "0")}.jpg`;
+      }
+
+      function heroFramePath(frame) {
+        return `Sequence/hero${String(frame).padStart(2, "0")}.jpg`;
+      }
+
+      function wait(milliseconds) {
+        return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+      }
+
+      function preloadImage(src) {
+        return new Promise((resolve) => {
+          const image = new Image();
+          image.decoding = "async";
+          image.onload = () => resolve(image);
+          image.onerror = () => {
+            console.warn(`Could not load image: ${src}`);
+            resolve(null);
+          };
+          image.src = src;
+        });
+      }
+
+      async function loadIntroFrames() {
+        const requests = [];
+        for (let frame = FIRST_FRAME; frame <= LAST_FRAME; frame += 1) {
+          requests.push(preloadImage(introFramePath(frame)));
+        }
+        const loadedFrames = await Promise.all(requests);
+        loadedFrames.forEach((image, index) => { introFrames[index] = image; });
+      }
+
+      async function loadHeroFrames() {
+        const requests = [];
+        for (let frame = SEQUENCE_FIRST_FRAME; frame <= SEQUENCE_LAST_FRAME; frame += 1) {
+          requests.push(preloadImage(heroFramePath(frame)));
+        }
+        const loadedFrames = await Promise.all(requests);
+        loadedFrames.forEach((image, frame) => { heroFrames[frame] = image; });
+      }
+
+      function waitForHighRes() {
+        if (highResImage.complete && highResImage.naturalWidth > 0) return Promise.resolve(true);
+        return new Promise((resolve) => {
+          highResImage.addEventListener("load", () => resolve(true), { once: true });
+          highResImage.addEventListener("error", () => resolve(false), { once: true });
+        });
+      }
+
+      function playIntro() {
+        return new Promise((resolve) => {
+          const frameDuration = 1000 / INTRO_FPS;
+          const totalFrames = LAST_FRAME - FIRST_FRAME + 1;
+          const startTime = performance.now();
+          let lastDisplayedIndex = -1;
+
+          function update(now) {
+            const frameIndex = Math.min(Math.floor((now - startTime) / frameDuration), totalFrames - 1);
+            if (frameIndex !== lastDisplayedIndex) {
+              const frame = introFrames[frameIndex];
+              if (frame) sequenceImage.src = frame.src;
+              lastDisplayedIndex = frameIndex;
+            }
+            if (frameIndex < totalFrames - 1) requestAnimationFrame(update);
+            else resolve();
+          }
+
+          requestAnimationFrame(update);
+        });
+      }
+
+      function getCoverMetrics() {
+        const containerWidth = hero.clientWidth;
+        const containerHeight = hero.clientHeight;
+        const imageWidth = highResImage.naturalWidth || 1920;
+        const imageHeight = highResImage.naturalHeight || 1080;
+        const scale = Math.max(containerWidth / imageWidth, containerHeight / imageHeight);
+        const renderedWidth = imageWidth * scale;
+        const renderedHeight = imageHeight * scale;
+        return {
+          offsetX: (containerWidth - renderedWidth) / 2,
+          offsetY: (containerHeight - renderedHeight) / 2,
+          renderedWidth,
+          renderedHeight
+        };
+      }
+
+      function positionHotspots() {
+        const metrics = getCoverMetrics();
+        hotspotLayer.querySelectorAll(".hotspot").forEach((button) => {
+          button.style.left = `${metrics.offsetX + (Number(button.dataset.x) / 100) * metrics.renderedWidth}px`;
+          button.style.top = `${metrics.offsetY + (Number(button.dataset.y) / 100) * metrics.renderedHeight}px`;
+        });
+      }
+
+      function renderHotspots() {
+        hotspotLayer.innerHTML = "";
+        const leftToRight = [...hotspots].sort((a, b) => a.x - b.x);
+
+        leftToRight.forEach((hotspot, index) => {
+          const product = PRODUCT_DETAILS[hotspot.product];
+          if (!product) return;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "hotspot";
+          button.id = hotspot.id;
+          button.dataset.product = hotspot.product;
+          button.dataset.x = hotspot.x;
+          button.dataset.y = hotspot.y;
+          button.style.setProperty("--show-delay", `${220 + index * 150}ms`);
+          button.style.setProperty("--hide-delay", `${(leftToRight.length - 1 - index) * 110}ms`);
+          button.setAttribute("aria-label", product.label);
+          button.innerHTML = product.inlineIcon ? rainwareIcon() : `<img src="${product.icon}" alt="" />`;
+          button.addEventListener("click", () => openProduct(hotspot));
+          hotspotLayer.appendChild(button);
+        });
+        positionHotspots();
+      }
+
+      function displayHeroFrame(frame) {
+        const image = heroFrames[frame];
+        highResImage.src = image ? image.src : heroFramePath(frame);
+        currentHeroFrame = frame;
+      }
+
+      function playHeroSequence(fromFrame, toFrame) {
+        return new Promise((resolve) => {
+          const direction = toFrame >= fromFrame ? 1 : -1;
+          const totalSteps = Math.abs(toFrame - fromFrame);
+          const frameDuration = 1000 / SEQUENCE_FPS;
+          const startTime = performance.now();
+          let lastStep = -1;
+
+          function update(now) {
+            const step = Math.min(Math.floor((now - startTime) / frameDuration), totalSteps);
+
+            if (step !== lastStep) {
+              displayHeroFrame(fromFrame + step * direction);
+              lastStep = step;
+            }
+
+            if (step < totalSteps) requestAnimationFrame(update);
+            else resolve();
+          }
+
+          requestAnimationFrame(update);
+        });
+      }
+
+      function heroSequenceDuration(fromFrame, toFrame) {
+        return Math.abs(toFrame - fromFrame) * (1000 / SEQUENCE_FPS);
+      }
+
+      function clamp(value, minimum, maximum) {
+        return Math.min(Math.max(value, minimum), maximum);
+      }
+
+      function displayScrollFrame(progress) {
+        const frame = LAST_FRAME - Math.round(progress * (LAST_FRAME - FIRST_FRAME));
+        if (frame === lastScrollFrame) return;
+
+        const image = introFrames[frame - FIRST_FRAME];
+        sequenceImage.src = image ? image.src : introFramePath(frame);
+        lastScrollFrame = frame;
+      }
+
+      function applyScrollProgress(progress) {
+        scrollProgress = clamp(progress, 0, 1);
+        if (!experienceReady || productFlowActive || isBusy || dialogLayer.classList.contains("is-open")) {
+          return;
+        }
+
+        displayScrollFrame(scrollProgress);
+
+        if (scrollProgress > SCROLL_HIDE_THRESHOLD && !scrollAwayActive) {
+          scrollAwayActive = true;
+          clearOverState();
+          hero.classList.add("scrolling-away", "sequence-active");
+          hero.classList.remove("hotspots-visible");
+        } else if (scrollProgress <= SCROLL_SHOW_THRESHOLD && scrollAwayActive) {
+          scrollAwayActive = false;
+          hero.classList.remove("scrolling-away");
+          displayScrollFrame(0);
+          showInterface();
+        }
+      }
+
+      function scheduleScrollUpdate() {
+        if (scrollUpdatePending) return;
+        scrollUpdatePending = true;
+
+        requestAnimationFrame(() => {
+          scrollUpdatePending = false;
+          applyScrollProgress(readScrollProgress());
+        });
+      }
+
+      function setupScrollExperience() {
+        const scrollDistance = () => Math.max(hero.clientHeight * SCROLL_ZOOM_DISTANCE_FACTOR, 1);
+
+        if (window.parent !== window) {
+          try {
+            const parentWindow = window.parent;
+            void parentWindow.document.documentElement;
+            const baseline = parentWindow.scrollY;
+
+            readScrollProgress = () => clamp(
+              (parentWindow.scrollY - baseline) / scrollDistance(),
+              0,
+              1
+            );
+
+            parentWindow.addEventListener("scroll", scheduleScrollUpdate, { passive: true });
+            parentWindow.addEventListener("resize", scheduleScrollUpdate, { passive: true });
+            return;
+          } catch (error) {
+            // A cross-origin Elementor iframe is handled below.
+          }
+        }
+
+        if (window.parent === window) {
+          const baseline = window.scrollY;
+          readScrollProgress = () => clamp(
+            (window.scrollY - baseline) / scrollDistance(),
+            0,
+            1
+          );
+          window.addEventListener("scroll", scheduleScrollUpdate, { passive: true });
+          window.addEventListener("resize", scheduleScrollUpdate, { passive: true });
+          return;
+        }
+
+        if ("IntersectionObserver" in window) {
+          let highestVisibleRatio = 0;
+          const thresholds = Array.from({ length: 101 }, (_, index) => index / 100);
+
+          const observer = new IntersectionObserver((entries) => {
+            const entry = entries[0];
+            if (!entry) return;
+
+            highestVisibleRatio = Math.max(highestVisibleRatio, entry.intersectionRatio);
+            const visibleRatio = highestVisibleRatio > 0
+              ? entry.intersectionRatio / highestVisibleRatio
+              : 1;
+            const progress = clamp(
+              (1 - visibleRatio) / SCROLL_ZOOM_DISTANCE_FACTOR,
+              0,
+              1
+            );
+
+            readScrollProgress = () => progress;
+            applyScrollProgress(progress);
+          }, { threshold: thresholds });
+
+          observer.observe(hero);
+        }
+      }
+
+      function loadOverStates() {
+        overImages.forEach((image) => {
+          image.decoding = "async";
+          image.src = image.dataset.src;
+        });
+      }
+
+      function showOverState(product) {
+        activeOverProduct = product;
+
+        overImages.forEach((image) => {
+          const shouldShow = image.dataset.product === product;
+          if (!shouldShow) image.classList.remove("is-visible");
+
+          if (shouldShow) {
+            const reveal = () => {
+              if (activeOverProduct === product) image.classList.add("is-visible");
+            };
+
+            if (image.complete && image.naturalWidth > 0) reveal();
+            else image.addEventListener("load", reveal, { once: true });
+          }
+        });
+      }
+
+      function hideOverState(product) {
+        if (activeOverProduct !== product) return;
+        activeOverProduct = null;
+        overImages.forEach((image) => image.classList.remove("is-visible"));
+      }
+
+      function clearOverState() {
+        activeOverProduct = null;
+        overImages.forEach((image) => image.classList.remove("is-visible"));
+      }
+
+      function bindOverStateEvents() {
+        document.querySelectorAll("[data-product]").forEach((element) => {
+          if (element.classList.contains("product-over")) return;
+          const product = element.dataset.product;
+          element.addEventListener("pointerenter", () => showOverState(product));
+          element.addEventListener("pointerleave", () => hideOverState(product));
+          element.addEventListener("focus", () => showOverState(product));
+          element.addEventListener("blur", () => hideOverState(product));
+        });
+      }
+
+      function bindProductButtonClicks() {
+        document.querySelectorAll(".product-button").forEach((button) => {
+          const matchingHotspot = hotspots.find((hotspot) => hotspot.product === button.dataset.product);
+          if (matchingHotspot) {
+            button.addEventListener("click", () => openProduct(matchingHotspot));
+          }
+        });
+      }
+
+      function setDialogProduct(productKey) {
+        const product = PRODUCT_DETAILS[productKey];
+        if (!product) return;
+
+        dialogBrand.innerHTML = product.inlineIcon
+          ? `${rainwareIcon()}<span>${product.label}</span>`
+          : `<img src="${product.icon}" alt="" /><span>${product.label}</span>`;
+        dialogTitle.textContent = product.label;
+      }
+
+      async function hideInterface() {
+        clearOverState();
+        hero.classList.add("sequence-active");
+        hero.classList.remove("hotspots-visible");
+        await wait(HOTSPOT_HIDE_TIME);
+      }
+
+      function showInterface() {
+        hero.classList.remove("sequence-active");
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => hero.classList.add("hotspots-visible"));
+        });
+      }
+
+      async function openProduct(hotspot) {
+        if (isBusy || dialogLayer.classList.contains("is-open")) return;
+
+        isBusy = true;
+        productFlowActive = true;
+        selectedProduct = hotspot.product;
+        const targetFrame = hotspot.x < 50 ? SEQUENCE_FIRST_FRAME : SEQUENCE_LAST_FRAME;
+        const revealDelay = Math.max(
+          0,
+          heroSequenceDuration(DEFAULT_HERO_FRAME, targetFrame) - DIALOG_REVEAL_LEAD
+        );
+
+        const hotspotExit = hideInterface();
+        const sequencePlayback = playHeroSequence(DEFAULT_HERO_FRAME, targetFrame);
+        const dialogReveal = wait(revealDelay).then(() => {
+          setDialogProduct(selectedProduct);
+          dialogLayer.setAttribute("aria-hidden", "false");
+          dialogLayer.classList.add("is-open");
+        });
+
+        await Promise.all([hotspotExit, sequencePlayback, dialogReveal]);
+        isBusy = false;
+        dialogClose.focus({ preventScroll: true });
+      }
+
+      async function closeProduct() {
+        if (isBusy || !dialogLayer.classList.contains("is-open")) return;
+
+        isBusy = true;
+        dialogLayer.classList.remove("is-open");
+        dialogLayer.setAttribute("aria-hidden", "true");
+        const dialogExit = wait(DIALOG_TRANSITION_TIME);
+        const reversePlayback = playHeroSequence(currentHeroFrame, DEFAULT_HERO_FRAME);
+        const interfaceReturnDelay = Math.max(
+          0,
+          heroSequenceDuration(currentHeroFrame, DEFAULT_HERO_FRAME) - HOTSPOT_RETURN_LEAD
+        );
+        const interfaceReturn = wait(interfaceReturnDelay).then(() => {
+          if (scrollProgress <= SCROLL_HIDE_THRESHOLD) showInterface();
+        });
+
+        await Promise.all([dialogExit, reversePlayback, interfaceReturn]);
+        selectedProduct = null;
+        isBusy = false;
+        productFlowActive = false;
+        scheduleScrollUpdate();
+      }
+
+      async function startHero() {
+        const highResReady = waitForHighRes();
+        const introReady = loadIntroFrames();
+        heroFramesReady = loadHeroFrames();
+
+        await introReady;
+        await playIntro();
+        if (await highResReady) highResImage.classList.add("is-visible");
+        renderHotspots();
+        bindOverStateEvents();
+        bindProductButtonClicks();
+        loadOverStates();
+        requestAnimationFrame(() => {
+          hero.classList.add("ui-ready");
+          requestAnimationFrame(() => {
+            hero.classList.add("hotspots-visible");
+            experienceReady = true;
+            scheduleScrollUpdate();
+          });
+        });
+      }
+
+      window.addEventListener("resize", positionHotspots);
+      dialogClose.addEventListener("click", closeProduct);
+      dialogLayer.addEventListener("pointerdown", (event) => {
+        if (event.target === dialogLayer) closeProduct();
+      });
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeProduct();
+      });
+      setupScrollExperience();
+      startHero();
+    })();
+  </script>
+</body>
+</html>
