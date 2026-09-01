@@ -519,9 +519,10 @@
       const DIALOG_TRANSITION_TIME = 980;
       const DIALOG_REVEAL_LEAD = 380;
       const HOTSPOT_RETURN_LEAD = 360;
-      const SCROLL_ZOOM_DISTANCE_FACTOR = 0.72;
+      const SCROLL_ZOOM_DISTANCE_FACTOR = 0.84;
       const SCROLL_HIDE_THRESHOLD = 0.018;
-      const SCROLL_SHOW_THRESHOLD = 0.008;
+      const SCROLL_SHOW_THRESHOLD = 0.14;
+      const SCROLL_FORCE_SHOW_THRESHOLD = 0.006;
 
       const PRODUCT_DETAILS = {
         lux: { label: "LUX Architectural Products", icon: "Logo's/LUX-Icon.svg" },
@@ -564,6 +565,7 @@
       let scrollProgress = 0;
       let lastScrollFrame = LAST_FRAME;
       let scrollUpdatePending = false;
+      let externalScrollControl = false;
       let readScrollProgress = () => scrollProgress;
 
       function rainwareIcon() {
@@ -742,19 +744,29 @@
       }
 
       function applyScrollProgress(progress) {
-        scrollProgress = clamp(progress, 0, 1);
+        const nextProgress = clamp(progress, 0, 1);
+        const scrollingDown = nextProgress > scrollProgress + 0.0005;
+        const scrollingUp = nextProgress < scrollProgress - 0.0005;
+        scrollProgress = nextProgress;
+
         if (!experienceReady || productFlowActive || isBusy || dialogLayer.classList.contains("is-open")) {
           return;
         }
 
         displayScrollFrame(scrollProgress);
 
-        if (scrollProgress > SCROLL_HIDE_THRESHOLD && !scrollAwayActive) {
+        if (scrollingDown && scrollProgress > SCROLL_HIDE_THRESHOLD && !scrollAwayActive) {
           scrollAwayActive = true;
           clearOverState();
           hero.classList.add("scrolling-away", "sequence-active");
           hero.classList.remove("hotspots-visible");
-        } else if (scrollProgress <= SCROLL_SHOW_THRESHOLD && scrollAwayActive) {
+        } else if (
+          scrollAwayActive &&
+          (
+            (scrollingUp && scrollProgress <= SCROLL_SHOW_THRESHOLD) ||
+            scrollProgress <= SCROLL_FORCE_SHOW_THRESHOLD
+          )
+        ) {
           scrollAwayActive = false;
           hero.classList.remove("scrolling-away");
           displayScrollFrame(0);
@@ -812,6 +824,7 @@
           const thresholds = Array.from({ length: 101 }, (_, index) => index / 100);
 
           const observer = new IntersectionObserver((entries) => {
+            if (externalScrollControl) return;
             const entry = entries[0];
             if (!entry) return;
 
@@ -990,6 +1003,17 @@
       });
       window.addEventListener("keydown", (event) => {
         if (event.key === "Escape") closeProduct();
+      });
+      window.addEventListener("message", (event) => {
+        if (event.source !== window.parent) return;
+        if (!event.data || event.data.type !== "wayne-hero-scroll") return;
+
+        const progress = Number(event.data.progress);
+        if (!Number.isFinite(progress)) return;
+
+        externalScrollControl = true;
+        readScrollProgress = () => clamp(progress, 0, 1);
+        applyScrollProgress(progress);
       });
       setupScrollExperience();
       startHero();
