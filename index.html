@@ -392,6 +392,48 @@
       letter-spacing: 0.08em;
     }
 
+    #loading-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      visibility: hidden;
+      background: #000;
+      pointer-events: none;
+      transition: opacity 320ms ease, visibility 0s linear 320ms;
+    }
+
+    #loading-overlay.is-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 320ms ease, visibility 0s;
+    }
+
+    #lottie-loader {
+      width: clamp(110px, 14vw, 210px);
+      height: clamp(110px, 14vw, 210px);
+    }
+
+    .loader-fallback {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(255, 255, 255, 0.18);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: loader-spin 800ms linear infinite;
+      transition: opacity 180ms ease;
+    }
+
+    #loading-overlay.lottie-ready .loader-fallback { opacity: 0; }
+
+    @keyframes loader-spin {
+      to { transform: rotate(360deg); }
+    }
+
     @media (max-width: 760px) {
       :root {
         --menu-height: 190px;
@@ -502,8 +544,14 @@
         <footer class="dialog-footer">SHOP ALL</footer>
       </section>
     </div>
+
+    <div id="loading-overlay" role="status" aria-label="Loading" aria-live="polite">
+      <div id="lottie-loader" aria-hidden="true"></div>
+      <div class="loader-fallback" aria-hidden="true"></div>
+    </div>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
   <script>
     (() => {
       "use strict";
@@ -552,10 +600,15 @@
       const dialogBrand = document.getElementById("dialog-brand");
       const dialogTitle = document.getElementById("dialog-title");
       const dialogClose = document.getElementById("dialog-close");
+      const loadingOverlay = document.getElementById("loading-overlay");
+      const lottieLoader = document.getElementById("lottie-loader");
       const introFrames = [];
       const heroFrames = [];
       let activeOverProduct = null;
       let heroFramesReady = Promise.resolve();
+      let heroFramesLoaded = false;
+      let loaderDelayTimer = null;
+      let loaderAnimation = null;
       let currentHeroFrame = DEFAULT_HERO_FRAME;
       let selectedProduct = null;
       let isBusy = false;
@@ -573,6 +626,42 @@
           <path fill="currentColor" d="M53.5 21.5a16 16 0 0 0-30.2-4.7A12.5 12.5 0 1 0 14 37.5h39.5a8 8 0 0 0 0-16Z"/>
           <path fill="currentColor" d="M18 45c0 3.2-4 7.5-4 7.5S10 48.2 10 45a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Z"/>
         </svg>`;
+      }
+
+      function initializeLottieLoader() {
+        if (!window.lottie || !lottieLoader) return;
+
+        loaderAnimation = window.lottie.loadAnimation({
+          container: lottieLoader,
+          renderer: "svg",
+          loop: true,
+          autoplay: true,
+          path: "pre-loader_03.json"
+        });
+
+        loaderAnimation.addEventListener("DOMLoaded", () => {
+          loadingOverlay.classList.add("lottie-ready");
+        });
+      }
+
+      function showLoader(delay = 160) {
+        window.clearTimeout(loaderDelayTimer);
+        loaderDelayTimer = window.setTimeout(() => {
+          loadingOverlay.classList.add("is-visible");
+        }, delay);
+      }
+
+      function hideLoader() {
+        window.clearTimeout(loaderDelayTimer);
+        loaderDelayTimer = null;
+        loadingOverlay.classList.remove("is-visible");
+      }
+
+      async function ensureHeroFramesReady() {
+        if (heroFramesLoaded) return;
+        showLoader(180);
+        await heroFramesReady;
+        hideLoader();
       }
 
       function introFramePath(frame) {
@@ -939,6 +1028,7 @@
         );
 
         const hotspotExit = hideInterface();
+        await ensureHeroFramesReady();
         const sequencePlayback = playHeroSequence(DEFAULT_HERO_FRAME, targetFrame);
         const dialogReveal = wait(revealDelay).then(() => {
           setDialogProduct(selectedProduct);
@@ -975,11 +1065,15 @@
       }
 
       async function startHero() {
+        showLoader(160);
         const highResReady = waitForHighRes();
         const introReady = loadIntroFrames();
-        heroFramesReady = loadHeroFrames();
+        heroFramesReady = loadHeroFrames().then(() => {
+          heroFramesLoaded = true;
+        });
 
         await introReady;
+        hideLoader();
         await playIntro();
         if (await highResReady) highResImage.classList.add("is-visible");
         renderHotspots();
@@ -1015,6 +1109,7 @@
         readScrollProgress = () => clamp(progress, 0, 1);
         applyScrollProgress(progress);
       });
+      initializeLottieLoader();
       setupScrollExperience();
       startHero();
     })();
