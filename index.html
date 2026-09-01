@@ -733,9 +733,7 @@
       const HOTSPOT_RETURN_LEAD = 360;
       const SCROLL_ZOOM_DISTANCE_FACTOR = 0.84;
       const SCROLL_SEQUENCE_START_THRESHOLD = 0.10;
-      const SCROLL_HIDE_THRESHOLD = 0.24;
-      const SCROLL_SHOW_THRESHOLD = 0.34;
-      const SCROLL_FORCE_SHOW_THRESHOLD = 0.14;
+      const SCROLL_HIDE_THRESHOLD = SCROLL_SEQUENCE_START_THRESHOLD;
       const PAN_AUTO_START_DELAY = 3200;
       const PAN_AUTO_RESUME_DELAY = 4000;
       const PAN_EDGE_PAUSE = 1500;
@@ -1330,28 +1328,28 @@
           return;
         }
 
-        if (scrollProgress > SCROLL_SEQUENCE_START_THRESHOLD) {
+        const zoomSequenceActive = scrollProgress > SCROLL_SEQUENCE_START_THRESHOLD;
+
+        if (zoomSequenceActive) {
+          if (!scrollAwayActive) {
+            scrollAwayActive = true;
+            hoveredMenuProduct = null;
+            cancelPanAnimation();
+            clearOverState();
+          }
+
+          /* Disable every product control before exposing a zoom frame. */
+          hero.classList.add("scrolling-away", "sequence-active");
+          hero.classList.remove("hotspots-visible");
           displayScrollFrame(scrollProgress);
-          if (!hero.classList.contains("scrolling-away")) clearOverState();
-          hero.classList.add("scrolling-away");
         } else {
           hero.classList.remove("scrolling-away");
           displayScrollFrame(0);
-        }
 
-        if (scrollingDown && scrollProgress > SCROLL_HIDE_THRESHOLD && !scrollAwayActive) {
-          scrollAwayActive = true;
-          hero.classList.add("sequence-active");
-          hero.classList.remove("hotspots-visible");
-        } else if (
-          scrollAwayActive &&
-          (
-            (scrollingUp && scrollProgress <= SCROLL_SHOW_THRESHOLD) ||
-            scrollProgress <= SCROLL_FORCE_SHOW_THRESHOLD
-          )
-        ) {
-          scrollAwayActive = false;
-          showInterface();
+          if (scrollAwayActive) {
+            scrollAwayActive = false;
+            showInterface();
+          }
         }
       }
 
@@ -1556,7 +1554,13 @@
       }
 
       async function openProduct(hotspot) {
-        if (isBusy || dialogLayer.classList.contains("is-open")) return;
+        const liveScrollProgress = clamp(readScrollProgress(), 0, 1);
+        if (
+          isBusy ||
+          scrollAwayActive ||
+          liveScrollProgress > SCROLL_SEQUENCE_START_THRESHOLD ||
+          dialogLayer.classList.contains("is-open")
+        ) return;
 
         hoveredMenuProduct = null;
         registerPanInteraction();
