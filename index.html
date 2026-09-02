@@ -17,9 +17,10 @@
 
     html, body {
       width: 100%;
+      height: 100%;
       min-height: 100%;
       margin: 0;
-      overflow-x: hidden;
+      overflow: hidden;
       background: #000;
       font-family: Arial, Helvetica, sans-serif;
     }
@@ -30,8 +31,7 @@
       --pan-position: 50%;
       position: relative;
       width: 100%;
-      height: 100vh;
-      height: 100dvh;
+      height: 100%;
       overflow: hidden;
       background: #000;
       isolation: isolate;
@@ -180,7 +180,7 @@
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
       height: var(--menu-height);
-      padding: 18px clamp(16px, 3vw, 54px);
+      padding: 18px clamp(16px, 3vw, 54px) max(18px, env(safe-area-inset-bottom, 0px));
       background: rgba(0, 0, 0, 0.30);
       border-top: 1px solid rgba(255, 255, 255, 0.08);
       -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -338,7 +338,7 @@
       align-items: center;
       justify-content: center;
       flex-direction: column;
-      gap: 13px;
+      gap: 16px;
       border: 0;
       color: #fff;
       background: transparent;
@@ -583,7 +583,7 @@
       #product-menu {
         grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-rows: repeat(2, minmax(0, 1fr));
-        padding: 8px;
+        padding: 8px 8px max(12px, env(safe-area-inset-bottom, 0px));
       }
 
       #pan-controls {
@@ -601,7 +601,7 @@
       }
 
       .product-button {
-        gap: 5px;
+        gap: 9px;
         padding: 6px 4px;
       }
 
@@ -734,6 +734,7 @@
       const SCROLL_ZOOM_DISTANCE_FACTOR = 0.84;
       const SCROLL_SEQUENCE_START_THRESHOLD = 0.10;
       const SCROLL_HIDE_THRESHOLD = SCROLL_SEQUENCE_START_THRESHOLD;
+      const AUTO_PAN_ENABLED = false;
       const PAN_AUTO_START_DELAY = 3200;
       const PAN_AUTO_RESUME_DELAY = 4000;
       const PAN_EDGE_PAUSE = 1500;
@@ -801,7 +802,7 @@
       let panAnimationFrame = 0;
       let panAnimationIsAuto = false;
       let panAutoTimer = 0;
-      let panAutoCancelled = false;
+      let panAutoCancelled = !AUTO_PAN_ENABLED;
       let panAutoDirection = 1;
       let panPointerId = null;
       let panPointerStartX = 0;
@@ -1040,6 +1041,12 @@
       }
 
       function tryResumeAutoPan() {
+        if (!AUTO_PAN_ENABLED) {
+          clearAutoPanTimer();
+          panAutoCancelled = true;
+          return;
+        }
+
         if (!panEnabled) {
           panAutoCancelled = false;
           panAutoTimer = 0;
@@ -1058,6 +1065,7 @@
 
       function scheduleAutoPanResume() {
         clearAutoPanTimer();
+        if (!AUTO_PAN_ENABLED) return;
         panAutoTimer = window.setTimeout(tryResumeAutoPan, PAN_AUTO_RESUME_DELAY);
       }
 
@@ -1070,6 +1078,7 @@
 
       function startAutoPan() {
         if (
+          !AUTO_PAN_ENABLED ||
           !panEnabled ||
           panAutoCancelled ||
           autoPanIsBlocked()
@@ -1090,7 +1099,7 @@
       }
 
       function scheduleAutoPan() {
-        if (!panEnabled || panAutoCancelled || !experienceReady) return;
+        if (!AUTO_PAN_ENABLED || !panEnabled || panAutoCancelled || !experienceReady) return;
         clearAutoPanTimer();
         panAutoTimer = window.setTimeout(startAutoPan, PAN_AUTO_START_DELAY);
       }
