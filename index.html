@@ -577,6 +577,7 @@
       height: 58px;
       padding: 4px;
       place-items: center;
+      overflow: hidden;
       border-radius: 7px;
       background: #fff;
     }
@@ -589,11 +590,10 @@
 
     .dialog-action__thumbnail img {
       display: block;
-      width: auto;
-      max-width: 100%;
-      height: auto;
-      max-height: 100%;
-      object-fit: contain;
+      width: 100%;
+      height: 100%;
+      object-fit: var(--thumbnail-fit, contain);
+      object-position: var(--thumbnail-position-x, 50%) var(--thumbnail-position-y, 50%);
     }
 
     .dialog-action__copy {
@@ -832,7 +832,8 @@
       const DIALOG_REVEAL_LEAD = 380;
       const HOTSPOT_RETURN_LEAD = 360;
       const SCROLL_ZOOM_DISTANCE_FACTOR = 0.84;
-      const SCROLL_SEQUENCE_START_THRESHOLD = 0.10;
+      const IS_COARSE_POINTER = window.matchMedia("(pointer: coarse)").matches;
+      const SCROLL_SEQUENCE_START_THRESHOLD = IS_COARSE_POINTER ? 0.18 : 0.10;
       const SCROLL_HIDE_THRESHOLD = SCROLL_SEQUENCE_START_THRESHOLD;
       const AUTO_PAN_ENABLED = false;
       const PAN_AUTO_START_DELAY = 3200;
@@ -843,6 +844,10 @@
       const PAN_ARROW_STEP = 0.18;
       const PAN_DRAG_FRICTION = 0.94;
       const PAN_DRAG_THRESHOLD = 5;
+      const PAN_TOUCH_DECISION_DISTANCE = 12;
+      const PAN_TOUCH_SCROLL_DISTANCE = 28;
+      const PAN_TOUCH_HORIZONTAL_BIAS = 0.78;
+      const PAN_TOUCH_VERTICAL_BIAS = 1.35;
 
       const PRODUCT_DETAILS = {
         lux: { label: "LUX Architectural Products", icon: "Logo's/LUX-Icon.svg" },
@@ -1252,7 +1257,6 @@
         hero.addEventListener("pointerdown", (event) => {
           registerPanInteraction();
           if (!panEnabled || event.button > 0) return;
-          if (event.pointerType !== "mouse") return;
           if (event.target.closest("#pan-controls, #product-menu, #dialog-layer, #loading-overlay")) return;
 
           cancelPanAnimation();
@@ -1272,12 +1276,27 @@
           const totalY = event.clientY - panPointerStartY;
 
           if (panGestureState === "pending") {
-            if (Math.hypot(totalX, totalY) < PAN_DRAG_THRESHOLD) return;
+            const absoluteX = Math.abs(totalX);
+            const absoluteY = Math.abs(totalY);
+            const isTouchLike = event.pointerType !== "mouse";
 
-            if (event.pointerType !== "mouse" && Math.abs(totalY) > Math.abs(totalX)) {
-              panGestureState = "idle";
-              panPointerId = null;
-              if (hero.hasPointerCapture?.(event.pointerId)) hero.releasePointerCapture(event.pointerId);
+            if (isTouchLike) {
+              const horizontalIntent =
+                Math.hypot(totalX, totalY) >= PAN_TOUCH_DECISION_DISTANCE &&
+                absoluteX >= absoluteY * PAN_TOUCH_HORIZONTAL_BIAS;
+              const verticalIntent =
+                absoluteY >= PAN_TOUCH_SCROLL_DISTANCE &&
+                absoluteY > absoluteX * PAN_TOUCH_VERTICAL_BIAS;
+
+              if (verticalIntent) {
+                panGestureState = "idle";
+                panPointerId = null;
+                if (hero.hasPointerCapture?.(event.pointerId)) hero.releasePointerCapture(event.pointerId);
+                return;
+              }
+
+              if (!horizontalIntent) return;
+            } else if (Math.hypot(totalX, totalY) < PAN_DRAG_THRESHOLD) {
               return;
             }
 
@@ -1428,6 +1447,15 @@
         lastScrollFrame = frame;
       }
 
+      function scrollSequenceProgress(progress) {
+        return clamp(
+          (progress - SCROLL_SEQUENCE_START_THRESHOLD) /
+            (1 - SCROLL_SEQUENCE_START_THRESHOLD),
+          0,
+          1
+        );
+      }
+
       function applyScrollProgress(progress) {
         const nextProgress = clamp(progress, 0, 1);
         const scrollingDown = nextProgress > scrollProgress + 0.0005;
@@ -1453,7 +1481,7 @@
           /* Disable every product control before exposing a zoom frame. */
           hero.classList.add("scrolling-away", "sequence-active");
           hero.classList.remove("hotspots-visible");
-          displayScrollFrame(scrollProgress);
+          displayScrollFrame(scrollSequenceProgress(scrollProgress));
         } else {
           hero.classList.remove("scrolling-away");
           displayScrollFrame(0);
@@ -1700,6 +1728,18 @@
             if (button.showThumbnailBackground === false) {
               thumbnail.classList.add("has-no-background");
             }
+            const thumbnailFit = button.thumbnailFit === "cover" ? "cover" : "contain";
+            const rawPositionX = Number(button.thumbnailPositionX);
+            const rawPositionY = Number(button.thumbnailPositionY);
+            const thumbnailPositionX = Number.isFinite(rawPositionX)
+              ? clamp(rawPositionX, 0, 100)
+              : 50;
+            const thumbnailPositionY = Number.isFinite(rawPositionY)
+              ? clamp(rawPositionY, 0, 100)
+              : 50;
+            thumbnail.style.setProperty("--thumbnail-fit", thumbnailFit);
+            thumbnail.style.setProperty("--thumbnail-position-x", `${thumbnailPositionX}%`);
+            thumbnail.style.setProperty("--thumbnail-position-y", `${thumbnailPositionY}%`);
             const image = document.createElement("img");
             image.src = thumbnailUrl;
             image.alt = typeof button.thumbnail.alt === "string" ? button.thumbnail.alt : "";
