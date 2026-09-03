@@ -449,11 +449,14 @@
     #dialog-brand img,
     #dialog-brand svg {
       display: block;
-      width: 54px;
-      height: 38px;
+      width: auto;
+      max-width: min(190px, 42vw);
+      height: 44px;
       object-fit: contain;
       filter: brightness(0);
     }
+
+    #dialog-brand.is-custom img { filter: none; }
 
     #dialog-close {
       display: grid;
@@ -510,26 +513,97 @@
       line-height: 1.6;
     }
 
-    .dialog-placeholders {
+    .dialog-copy > :first-child { margin-top: 0; }
+    .dialog-copy > :last-child { margin-bottom: 0; }
+
+    .dialog-button-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(var(--dialog-columns, 2), minmax(0, 1fr));
+      grid-template-rows: repeat(var(--dialog-rows, 1), minmax(74px, auto));
+      grid-auto-rows: minmax(74px, auto);
       gap: 10px;
       margin-top: 28px;
     }
 
+    .dialog-action,
     .dialog-placeholder {
-      min-height: 90px;
+      display: flex;
+      min-width: 0;
+      min-height: 74px;
+      padding: 7px;
+      align-items: center;
+      gap: 12px;
       border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 10px;
+      color: #fff;
       background: rgba(255, 255, 255, 0.07);
+      text-decoration: none;
+    }
+
+    .dialog-action {
+      transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+    }
+
+    .dialog-action:hover,
+    .dialog-action:focus-visible {
+      border-color: rgba(255, 192, 30, 0.72);
+      background: rgba(255, 255, 255, 0.13);
+      outline: none;
+      transform: translateY(-2px);
+    }
+
+    .dialog-action.is-disabled {
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .dialog-footer.is-disabled {
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .dialog-action__thumbnail {
+      display: grid;
+      flex: 0 0 66px;
+      width: 66px;
+      height: 58px;
+      padding: 4px;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 7px;
+      background: #fff;
+    }
+
+    .dialog-action__thumbnail img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .dialog-action__label {
+      min-width: 0;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.35;
     }
 
     .dialog-footer {
       min-height: 58px;
       justify-content: center;
+      color: #111;
       font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.08em;
+      text-decoration: none;
+      transition: color 180ms ease, background 180ms ease;
+    }
+
+    .dialog-footer:hover,
+    .dialog-footer:focus-visible {
+      color: #8d6200;
+      background: #f4f4f4;
+      outline: none;
     }
 
     #loading-overlay {
@@ -617,7 +691,11 @@
       #product-dialog { width: 94vw; max-height: 82vh; }
       .dialog-header { min-height: 64px; padding: 12px 15px; }
       .dialog-body { padding: 22px 18px; }
-      .dialog-placeholders { grid-template-columns: 1fr; }
+      .dialog-action__thumbnail {
+        flex-basis: 54px;
+        width: 54px;
+        height: 50px;
+      }
     }
   </style>
 </head>
@@ -693,19 +771,15 @@
         </header>
 
         <div class="dialog-body">
-          <p class="dialog-eyebrow">Product information</p>
+          <p id="dialog-eyebrow" class="dialog-eyebrow">Product information</p>
           <h2 id="dialog-title">Product</h2>
-          <p class="dialog-copy">
+          <div id="dialog-copy" class="dialog-copy">
             This window is ready for the final product description, specifications, imagery and links.
-          </p>
-          <div class="dialog-placeholders" aria-hidden="true">
-            <div class="dialog-placeholder"></div>
-            <div class="dialog-placeholder"></div>
-            <div class="dialog-placeholder"></div>
           </div>
+          <div id="dialog-button-grid" class="dialog-button-grid"></div>
         </div>
 
-        <footer class="dialog-footer">SHOP ALL</footer>
+        <a id="dialog-shop-all" class="dialog-footer" href="#" target="_top">SHOP ALL</a>
       </section>
     </div>
 
@@ -753,6 +827,10 @@
         oronX: { label: "OrionX Lighting", icon: "Logo's/OronX-Icon.svg" }
       };
 
+      const DEFAULT_DIALOG_COPY =
+        "This window is ready for the final product description, specifications, imagery and links.";
+      let viewerConfig = { version: 1, products: {} };
+
       /* Paste the array produced by hotspot-recorder.html here. */
       const hotspots = [
         { id: "hotspot1", product: "armourSide", x: 23.24, y: 53.72 },
@@ -770,7 +848,11 @@
       const overImages = [...document.querySelectorAll(".product-over")];
       const dialogLayer = document.getElementById("dialog-layer");
       const dialogBrand = document.getElementById("dialog-brand");
+      const dialogEyebrow = document.getElementById("dialog-eyebrow");
       const dialogTitle = document.getElementById("dialog-title");
+      const dialogCopy = document.getElementById("dialog-copy");
+      const dialogButtonGrid = document.getElementById("dialog-button-grid");
+      const dialogShopAll = document.getElementById("dialog-shop-all");
       const dialogClose = document.getElementById("dialog-close");
       const loadingOverlay = document.getElementById("loading-overlay");
       const lottieLoader = document.getElementById("lottie-loader");
@@ -1538,14 +1620,120 @@
         });
       }
 
-      function setDialogProduct(productKey) {
-        const product = PRODUCT_DETAILS[productKey];
-        if (!product) return;
+      function normalizeViewerConfig(value) {
+        if (!value || typeof value !== "object") return { version: 1, products: {} };
+        const products = value.products && typeof value.products === "object"
+          ? value.products
+          : {};
+        return { version: 1, products };
+      }
 
+      function linkTarget(isNewTab) {
+        return isNewTab ? "_blank" : "_top";
+      }
+
+      function applyLinkAttributes(element, link) {
+        const url = typeof link?.url === "string" ? link.url.trim() : "";
+        element.href = url || "#";
+        element.target = linkTarget(Boolean(link?.newTab));
+        const rel = ["noopener", link?.newTab ? "noreferrer" : "", link?.nofollow ? "nofollow" : ""]
+          .filter(Boolean)
+          .join(" ");
+        element.rel = rel;
+        element.classList.toggle("is-disabled", !url);
+        element.setAttribute("aria-disabled", url ? "false" : "true");
+        element.onclick = url ? null : (event) => event.preventDefault();
+      }
+
+      function appendFallbackBrand(product) {
+        dialogBrand.classList.remove("is-custom");
         dialogBrand.innerHTML = product.inlineIcon
           ? `${rainwareIcon()}<span>${product.label}</span>`
           : `<img src="${product.icon}" alt="" /><span>${product.label}</span>`;
-        dialogTitle.textContent = product.label;
+      }
+
+      function renderDialogButtons(buttons, columns, rows) {
+        dialogButtonGrid.replaceChildren();
+        dialogButtonGrid.style.setProperty("--dialog-columns", String(columns));
+        dialogButtonGrid.style.setProperty("--dialog-rows", String(rows));
+
+        if (!buttons.length) {
+          for (let index = 0; index < 3; index += 1) {
+            const placeholder = document.createElement("div");
+            placeholder.className = "dialog-placeholder";
+            placeholder.setAttribute("aria-hidden", "true");
+            dialogButtonGrid.appendChild(placeholder);
+          }
+          return;
+        }
+
+        buttons.slice(0, 48).forEach((button) => {
+          const action = document.createElement("a");
+          action.className = "dialog-action";
+          applyLinkAttributes(action, button);
+
+          const thumbnailUrl = typeof button?.thumbnail?.url === "string"
+            ? button.thumbnail.url.trim()
+            : "";
+          if (thumbnailUrl) {
+            const thumbnail = document.createElement("span");
+            thumbnail.className = "dialog-action__thumbnail";
+            const image = document.createElement("img");
+            image.src = thumbnailUrl;
+            image.alt = typeof button.thumbnail.alt === "string" ? button.thumbnail.alt : "";
+            image.decoding = "async";
+            thumbnail.appendChild(image);
+            action.appendChild(thumbnail);
+          }
+
+          const label = document.createElement("span");
+          label.className = "dialog-action__label";
+          label.textContent = typeof button?.label === "string" ? button.label : "";
+          action.appendChild(label);
+          dialogButtonGrid.appendChild(action);
+        });
+      }
+
+      function setDialogProduct(productKey) {
+        const product = PRODUCT_DETAILS[productKey];
+        if (!product) return;
+        const config = viewerConfig.products[productKey] || {};
+        const customLogoUrl = typeof config?.logo?.url === "string" ? config.logo.url.trim() : "";
+
+        if (customLogoUrl) {
+          dialogBrand.classList.add("is-custom");
+          dialogBrand.replaceChildren();
+          const image = document.createElement("img");
+          image.src = customLogoUrl;
+          image.alt = typeof config.logo.alt === "string" ? config.logo.alt : "";
+          image.decoding = "async";
+          dialogBrand.appendChild(image);
+        } else {
+          appendFallbackBrand(product);
+        }
+
+        dialogEyebrow.textContent = typeof config.eyebrow === "string"
+          ? config.eyebrow
+          : "Product information";
+        dialogEyebrow.hidden = !dialogEyebrow.textContent.trim();
+        dialogTitle.textContent = typeof config.title === "string" && config.title.trim()
+          ? config.title
+          : product.label;
+        dialogCopy.innerHTML = typeof config.descriptionHtml === "string"
+          ? config.descriptionHtml
+          : DEFAULT_DIALOG_COPY;
+        dialogCopy.hidden = !dialogCopy.textContent.trim() && !dialogCopy.querySelector("img");
+
+        const columns = clamp(Math.round(Number(config.columns) || 2), 1, 4);
+        const rows = clamp(Math.round(Number(config.rows) || 3), 1, 8);
+        const buttons = Array.isArray(config.buttons) ? config.buttons : [];
+        renderDialogButtons(buttons, columns, rows);
+
+        const shopAll = config.shopAll && typeof config.shopAll === "object" ? config.shopAll : {};
+        dialogShopAll.textContent = typeof shopAll.label === "string" && shopAll.label.trim()
+          ? shopAll.label
+          : "SHOP ALL";
+        applyLinkAttributes(dialogShopAll, shopAll);
       }
 
       async function hideInterface() {
@@ -1671,7 +1859,14 @@
       });
       window.addEventListener("message", (event) => {
         if (event.source !== window.parent) return;
-        if (!event.data || event.data.type !== "wayne-hero-scroll") return;
+        if (!event.data || typeof event.data !== "object") return;
+
+        if (event.data.type === "wayne-viewer-config") {
+          viewerConfig = normalizeViewerConfig(event.data.config);
+          return;
+        }
+
+        if (event.data.type !== "wayne-hero-scroll") return;
 
         const progress = Number(event.data.progress);
         if (!Number.isFinite(progress)) return;
@@ -1680,6 +1875,9 @@
         readScrollProgress = () => clamp(progress, 0, 1);
         applyScrollProgress(progress);
       });
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: "wayne-viewer-ready", version: 1 }, "*");
+      }
       initializeLottieLoader();
       bindPanEvents();
       setupScrollExperience();
