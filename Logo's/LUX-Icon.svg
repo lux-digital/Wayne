@@ -1,1 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" id="Layer_2" data-name="Layer 2" viewBox="0 0 233.49 190.41"><defs><style>      .cls-1 {        fill: #fff;      }    </style></defs><g id="Layer_1-2" data-name="Layer 1"><g><polygon class="cls-1" points="120.26 63.72 116.74 59.79 170.17 0 177.21 0 120.26 63.72"></polygon><polyline class="cls-1" points="191.28 0 127.3 71.59 123.78 67.66 184.24 0 191.28 0 185.28 0"></polyline><polyline class="cls-1" points="205.35 0 134.33 79.46 130.81 75.53 198.31 0 205.35 0 199.35 0"></polyline><polyline class="cls-1" points="219.42 0 141.36 87.33 137.85 83.4 212.38 0 219.42 0 213.42 0"></polyline><polyline class="cls-1" points="233.49 0 148.4 95.21 144.88 91.27 226.45 0 233.49 0 227.48 0"></polyline><polygon class="cls-1" points="63.31 0 148.4 95.21 85.09 95.21 0 0 63.31 0"></polygon><polygon class="cls-1" points="63.31 190.41 148.4 95.21 85.09 95.21 0 190.41 63.31 190.41"></polygon><polyline class="cls-1" points="227.48 190.41 233.49 190.41 226.45 190.41 144.88 99.14 148.4 95.21 233.49 190.41"></polyline><polyline class="cls-1" points="219.42 190.41 141.36 103.08 137.85 107.01 212.38 190.41 219.42 190.41 213.42 190.41"></polyline><polyline class="cls-1" points="205.35 190.41 134.33 110.95 130.81 114.88 198.31 190.41 205.35 190.41 199.35 190.41"></polyline><polyline class="cls-1" points="191.28 190.41 127.3 118.82 123.78 122.76 184.24 190.41 191.28 190.41 185.28 190.41"></polyline><polygon class="cls-1" points="120.26 126.69 116.74 130.63 170.17 190.41 177.21 190.41 120.26 126.69"></polygon></g></g></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 279.17 190.41">
+  <!-- Generator: Adobe Illustrator 30.8.0, SVG Export Plug-In . SVG Version: 2.1.4 Build 114)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #fff;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1-2">
+    <g>
+      <polygon class="st0" points="142.93 63.72 139.41 59.79 192.84 0 199.88 0 142.93 63.72"/>
+      <polyline class="st0" points="213.95 0 149.97 71.59 146.45 67.66 206.91 0 213.95 0 207.95 0"/>
+      <polyline class="st0" points="228.02 0 157 79.46 153.48 75.53 220.98 0 228.02 0 222.02 0"/>
+      <polyline class="st0" points="242.09 0 164.03 87.33 160.52 83.4 235.05 0 242.09 0 236.09 0"/>
+      <polyline class="st0" points="256.16 0 171.07 95.21 167.55 91.27 249.12 0 256.16 0 250.15 0"/>
+      <polygon class="st0" points="85.98 0 171.07 95.21 107.76 95.21 22.67 0 85.98 0"/>
+      <polygon class="st0" points="85.98 190.41 171.07 95.21 107.76 95.21 22.67 190.41 85.98 190.41"/>
+      <polyline class="st0" points="250.15 190.41 256.16 190.41 249.12 190.41 167.55 99.14 171.07 95.21 256.16 190.41"/>
+      <polyline class="st0" points="242.09 190.41 164.03 103.08 160.52 107.01 235.05 190.41 242.09 190.41 236.09 190.41"/>
+      <polyline class="st0" points="228.02 190.41 157 110.95 153.48 114.88 220.98 190.41 228.02 190.41 222.02 190.41"/>
+      <polyline class="st0" points="213.95 190.41 149.97 118.82 146.45 122.76 206.91 190.41 213.95 190.41 207.95 190.41"/>
+      <polygon class="st0" points="142.93 126.69 139.41 130.63 192.84 190.41 199.88 190.41 142.93 126.69"/>
+    </g>
+  </g>
+</svg>
