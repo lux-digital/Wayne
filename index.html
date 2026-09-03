@@ -273,7 +273,7 @@
       --slider-fill: 50%;
       flex: 1 1 auto;
       min-width: 0;
-      height: 28px;
+      height: 42px;
       margin: 0;
       appearance: none;
       -webkit-appearance: none;
@@ -298,15 +298,15 @@
     }
 
     #pan-slider::-webkit-slider-thumb {
-      width: 17px;
-      height: 17px;
-      margin-top: -7px;
+      width: 42px;
+      height: 42px;
+      margin-top: -19px;
       appearance: none;
       -webkit-appearance: none;
       border: 0;
       border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      background: radial-gradient(circle at center, #fff 0 9px, transparent 10px);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
     }
 
     #pan-slider::-moz-range-track {
@@ -323,12 +323,12 @@
     }
 
     #pan-slider::-moz-range-thumb {
-      width: 17px;
-      height: 17px;
+      width: 42px;
+      height: 42px;
       border: 0;
       border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      background: radial-gradient(circle at center, #fff 0 9px, transparent 10px);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
     }
 
     .product-button {
@@ -680,41 +680,41 @@
 
     @media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
       :root {
-        --menu-height: 190px;
+        --menu-height: 160px;
         --hotspot-size: 44px;
       }
 
       #product-menu {
         grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-rows: repeat(2, minmax(0, 1fr));
-        padding: 8px 8px max(12px, env(safe-area-inset-bottom, 0px));
+        padding: 5px 6px max(8px, env(safe-area-inset-bottom, 0px));
       }
 
       #pan-controls {
         bottom: calc(var(--menu-height) + 10px);
         width: calc(100% - 18px);
-        height: 52px;
-        padding: 7px 9px;
-        gap: 8px;
+        height: 48px;
+        padding: 3px 8px;
+        gap: 6px;
       }
 
       .pan-arrow {
-        flex-basis: 36px;
-        width: 36px;
-        height: 36px;
+        flex-basis: 34px;
+        width: 34px;
+        height: 34px;
       }
 
       .product-button {
-        gap: 9px;
-        padding: 6px 4px;
+        gap: 6px;
+        padding: 3px 4px;
       }
 
       .product-button__icon {
-        width: 36px;
-        height: 23px;
+        width: 32px;
+        height: 21px;
       }
 
-      .product-button__label { font-size: 10px; }
+      .product-button__label { font-size: 9px; }
       .hotspot { box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.16); }
 
       #dialog-layer { padding: 12px; }
@@ -1252,6 +1252,7 @@
         hero.addEventListener("pointerdown", (event) => {
           registerPanInteraction();
           if (!panEnabled || event.button > 0) return;
+          if (event.pointerType !== "mouse") return;
           if (event.target.closest("#pan-controls, #product-menu, #dialog-layer, #loading-overlay")) return;
 
           cancelPanAnimation();
