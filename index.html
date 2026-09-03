@@ -505,6 +505,14 @@
       line-height: 1.05;
     }
 
+    .dialog-subtitle {
+      margin: -3px 0 14px;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: clamp(14px, 1.4vw, 18px);
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
     .dialog-copy {
       max-width: 680px;
       margin: 0;
@@ -569,22 +577,44 @@
       height: 58px;
       padding: 4px;
       place-items: center;
-      overflow: hidden;
       border-radius: 7px;
       background: #fff;
     }
 
+    .dialog-action__thumbnail.has-no-background {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
     .dialog-action__thumbnail img {
       display: block;
-      width: 100%;
-      height: 100%;
+      width: auto;
+      max-width: 100%;
+      height: auto;
+      max-height: 100%;
       object-fit: contain;
+    }
+
+    .dialog-action__copy {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 4px;
     }
 
     .dialog-action__label {
       min-width: 0;
       font-size: 12px;
       font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .dialog-action__subtitle {
+      min-width: 0;
+      color: rgba(255, 255, 255, 0.66);
+      font-size: 11px;
+      font-weight: 400;
       line-height: 1.35;
     }
 
@@ -738,12 +768,7 @@
       </button>
 
       <button class="product-button" type="button" data-product="rainware">
-        <span class="product-button__icon">
-          <svg viewBox="0 0 72 64" aria-hidden="true">
-            <path fill="currentColor" d="M53.5 21.5a16 16 0 0 0-30.2-4.7A12.5 12.5 0 1 0 14 37.5h39.5a8 8 0 0 0 0-16Z"/>
-            <path fill="currentColor" d="M18 45c0 3.2-4 7.5-4 7.5S10 48.2 10 45a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Z"/>
-          </svg>
-        </span>
+        <span class="product-button__icon"><img src="Logo's/Rainware-Icon.svg" alt="" /></span>
         <span class="product-button__label">Rainware</span>
       </button>
 
@@ -773,6 +798,7 @@
         <div class="dialog-body">
           <p id="dialog-eyebrow" class="dialog-eyebrow">Product information</p>
           <h2 id="dialog-title">Product</h2>
+          <p id="dialog-subtitle" class="dialog-subtitle" hidden></p>
           <div id="dialog-copy" class="dialog-copy">
             This window is ready for the final product description, specifications, imagery and links.
           </div>
@@ -821,7 +847,7 @@
       const PRODUCT_DETAILS = {
         lux: { label: "LUX Architectural Products", icon: "Logo's/LUX-Icon.svg" },
         armourSide: { label: "Armour Side", icon: "Logo's/ArmourSide-Icon.svg" },
-        rainware: { label: "Rainware", inlineIcon: true },
+        rainware: { label: "Rainware", icon: "Logo's/Rainware-Icon.svg" },
         soffit: { label: "Soffit and Fascia", icon: "Logo's/Wayne-Icon.svg" },
         metalLab: { label: "Metal Lab Roofing", icon: "Logo's/MetalLab-Icon.svg" },
         oronX: { label: "OrionX Lighting", icon: "Logo's/OronX-Icon.svg" }
@@ -850,6 +876,7 @@
       const dialogBrand = document.getElementById("dialog-brand");
       const dialogEyebrow = document.getElementById("dialog-eyebrow");
       const dialogTitle = document.getElementById("dialog-title");
+      const dialogSubtitle = document.getElementById("dialog-subtitle");
       const dialogCopy = document.getElementById("dialog-copy");
       const dialogButtonGrid = document.getElementById("dialog-button-grid");
       const dialogShopAll = document.getElementById("dialog-shop-all");
@@ -896,13 +923,6 @@
       let suppressHotspotClick = false;
       let panResizePending = false;
       let hoveredMenuProduct = null;
-
-      function rainwareIcon() {
-        return `<svg viewBox="0 0 72 64" aria-hidden="true">
-          <path fill="currentColor" d="M53.5 21.5a16 16 0 0 0-30.2-4.7A12.5 12.5 0 1 0 14 37.5h39.5a8 8 0 0 0 0-16Z"/>
-          <path fill="currentColor" d="M18 45c0 3.2-4 7.5-4 7.5S10 48.2 10 45a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Zm22 0c0 3.2-4 7.5-4 7.5s-4-4.3-4-7.5a4 4 0 0 1 8 0Z"/>
-        </svg>`;
-      }
 
       function initializeLottieLoader() {
         if (!window.lottie || !lottieLoader) return;
@@ -1345,7 +1365,7 @@
           button.style.setProperty("--show-delay", `${220 + index * 150}ms`);
           button.style.setProperty("--hide-delay", `${(leftToRight.length - 1 - index) * 110}ms`);
           button.setAttribute("aria-label", product.label);
-          button.innerHTML = product.inlineIcon ? rainwareIcon() : `<img src="${product.icon}" alt="" />`;
+          button.innerHTML = `<img src="${product.icon}" alt="" />`;
           button.addEventListener("click", (event) => {
             if (suppressHotspotClick) {
               suppressHotspotClick = false;
@@ -1647,9 +1667,7 @@
 
       function appendFallbackBrand(product) {
         dialogBrand.classList.remove("is-custom");
-        dialogBrand.innerHTML = product.inlineIcon
-          ? `${rainwareIcon()}<span>${product.label}</span>`
-          : `<img src="${product.icon}" alt="" /><span>${product.label}</span>`;
+        dialogBrand.innerHTML = `<img src="${product.icon}" alt="" /><span>${product.label}</span>`;
       }
 
       function renderDialogButtons(buttons, columns, rows) {
@@ -1678,6 +1696,9 @@
           if (thumbnailUrl) {
             const thumbnail = document.createElement("span");
             thumbnail.className = "dialog-action__thumbnail";
+            if (button.showThumbnailBackground === false) {
+              thumbnail.classList.add("has-no-background");
+            }
             const image = document.createElement("img");
             image.src = thumbnailUrl;
             image.alt = typeof button.thumbnail.alt === "string" ? button.thumbnail.alt : "";
@@ -1686,10 +1707,22 @@
             action.appendChild(thumbnail);
           }
 
+          const copy = document.createElement("span");
+          copy.className = "dialog-action__copy";
           const label = document.createElement("span");
           label.className = "dialog-action__label";
           label.textContent = typeof button?.label === "string" ? button.label : "";
-          action.appendChild(label);
+          copy.appendChild(label);
+
+          const subtitleText = typeof button?.subtitle === "string" ? button.subtitle.trim() : "";
+          if (subtitleText) {
+            const subtitle = document.createElement("span");
+            subtitle.className = "dialog-action__subtitle";
+            subtitle.textContent = subtitleText;
+            copy.appendChild(subtitle);
+          }
+
+          action.appendChild(copy);
           dialogButtonGrid.appendChild(action);
         });
       }
@@ -1719,6 +1752,8 @@
         dialogTitle.textContent = typeof config.title === "string" && config.title.trim()
           ? config.title
           : product.label;
+        dialogSubtitle.textContent = typeof config.subtitle === "string" ? config.subtitle : "";
+        dialogSubtitle.hidden = !dialogSubtitle.textContent.trim();
         dialogCopy.innerHTML = typeof config.descriptionHtml === "string"
           ? config.descriptionHtml
           : DEFAULT_DIALOG_COPY;
