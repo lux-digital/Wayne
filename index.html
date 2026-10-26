@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Product Hotspot Hero — optimized mobile</title>
+  <title>Product Hotspot Hero</title>
 
   <style>
     :root {
@@ -656,6 +656,11 @@
       transition: opacity 320ms ease, visibility 0s;
     }
 
+    #lottie-loader {
+      width: clamp(110px, 14vw, 210px);
+      height: clamp(110px, 14vw, 210px);
+    }
+
     .loader-fallback {
       position: absolute;
       width: 48px;
@@ -666,6 +671,8 @@
       animation: loader-spin 800ms linear infinite;
       transition: opacity 180ms ease;
     }
+
+    #loading-overlay.lottie-ready .loader-fallback { opacity: 0; }
 
     @keyframes loader-spin {
       to { transform: rotate(360deg); }
@@ -714,17 +721,6 @@
       #product-dialog { width: 94vw; max-height: 82vh; }
       .dialog-header { min-height: 64px; padding: 12px 15px; }
       .dialog-body { padding: 22px 18px; }
-
-      /* Avoid expensive live background blurs on mobile GPUs. */
-      #product-menu,
-      #pan-controls,
-      .dialog-body {
-        -webkit-backdrop-filter: none;
-        backdrop-filter: none;
-      }
-      #product-menu { background: rgba(0, 0, 0, 0.72); }
-      #pan-controls { background: rgba(0, 0, 0, 0.72); }
-      .dialog-body { background: rgba(0, 0, 0, 0.82); }
       .dialog-action__thumbnail {
         flex-basis: 54px;
         width: 54px;
@@ -736,8 +732,8 @@
 
 <body>
   <main id="hero" aria-label="Product hotspot hero">
-    <img id="hero-sequence" class="hero-frame" src="zoom 1280 x 720/intro00.jpg" alt="" draggable="false" decoding="async" fetchpriority="high" />
-    <img id="hero-high-res" class="hero-frame" src="Sequence 1280 x 720/hero36.jpg" alt="" draggable="false" decoding="async" fetchpriority="high" />
+    <img id="hero-sequence" class="hero-frame" src="zoom/Intro00.jpg" alt="" draggable="false" />
+    <img id="hero-high-res" class="hero-frame" src="Sequence/hero36.jpg" alt="" draggable="false" />
 
     <div id="over-layer" aria-hidden="true">
       <img class="hero-frame product-over" data-product="lux" data-src="Overs/Lux.jpg" alt="" />
@@ -814,28 +810,23 @@
     </div>
 
     <div id="loading-overlay" role="status" aria-label="Loading" aria-live="polite">
+      <div id="lottie-loader" aria-hidden="true"></div>
       <div class="loader-fallback" aria-hidden="true"></div>
     </div>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
   <script>
     (() => {
       "use strict";
 
       const INTRO_FPS = 24;
       const FIRST_FRAME = 0;
-      const LAST_FRAME = 32;
+      const LAST_FRAME = 40;
       const SEQUENCE_FPS = 24;
       const SEQUENCE_FIRST_FRAME = 0;
       const DEFAULT_HERO_FRAME = 36;
       const SEQUENCE_LAST_FRAME = 71;
-      // The intro is optional on slow mobile connections. The finished hero
-      // becomes interactive after this delay instead of waiting indefinitely.
-      // Raise this limit if retaining the automatic intro is more important than loading speed.
-      const INTRO_STARTUP_BUDGET_MS = 1800;
-      // Cap concurrent requests to avoid flooding a mobile connection.
-      const INTRO_PRELOAD_CONCURRENCY = 4;
-      const HERO_PRELOAD_CONCURRENCY = 5;
       const HOTSPOT_HIDE_TIME = 1400;
       const DIALOG_TRANSITION_TIME = 980;
       const DIALOG_REVEAL_LEAD = 380;
@@ -902,11 +893,13 @@
       const panLeft = document.getElementById("pan-left");
       const panRight = document.getElementById("pan-right");
       const desktopHoverQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
-      // Hold only the currently selected half of the product sequence.
-      // Intro frames are not retained as Image objects after preloading.
-      const heroFrames = new Map();
+      const introFrames = [];
+      const heroFrames = [];
       let activeOverProduct = null;
+      let heroFramesReady = Promise.resolve();
+      let heroFramesLoaded = false;
       let loaderDelayTimer = null;
+      let loaderAnimation = null;
       let currentHeroFrame = DEFAULT_HERO_FRAME;
       let selectedProduct = null;
       let isBusy = false;
@@ -936,8 +929,21 @@
       let panResizePending = false;
       let hoveredMenuProduct = null;
 
-      // Lightweight CSS loading spinner replaces the Lottie library on mobile.
-      // This eliminates a third-party script and animation JSON download.
+      function initializeLottieLoader() {
+        if (!window.lottie || !lottieLoader) return;
+
+        loaderAnimation = window.lottie.loadAnimation({
+          container: lottieLoader,
+          renderer: "svg",
+          loop: true,
+          autoplay: true,
+          path: "pre-loader_03.json"
+        });
+
+        loaderAnimation.addEventListener("DOMLoaded", () => {
+          loadingOverlay.classList.add("lottie-ready");
+        });
+      }
 
       function showLoader(delay = 160) {
         window.clearTimeout(loaderDelayTimer);
@@ -952,22 +958,19 @@
         loadingOverlay.classList.remove("is-visible");
       }
 
-      async function ensureHeroFramesReady(targetFrame) {
+      async function ensureHeroFramesReady() {
+        if (heroFramesLoaded) return;
         showLoader(180);
-        try {
-          // Only load the 36-37 frames used by the selected hotspot.
-          await loadHeroFrames(targetFrame);
-        } finally {
-          hideLoader();
-        }
+        await heroFramesReady;
+        hideLoader();
       }
 
       function introFramePath(frame) {
-        return `zoom 1280 x 720/intro${String(frame).padStart(2, "0")}.jpg`;
+        return `zoom/Intro${String(frame).padStart(2, "0")}.jpg`;
       }
 
       function heroFramePath(frame) {
-        return `Sequence 1280 x 720/hero${String(frame).padStart(2, "0")}.jpg`;
+        return `Sequence/hero${String(frame).padStart(2, "0")}.jpg`;
       }
 
       function wait(milliseconds) {
@@ -987,57 +990,26 @@
         });
       }
 
-      // Bounded requests rather than one Promise.all that downloads everything at once.
-      async function preloadWithLimit(items, limit, onLoaded, isCancelled = () => false) {
-        let nextIndex = 0;
-        const workerCount = Math.min(items.length, limit);
-        const workers = Array.from({ length: workerCount }, async () => {
-          while (!isCancelled()) {
-            const index = nextIndex++;
-            if (index >= items.length) return;
-            const item = items[index];
-            const image = await preloadImage(item.url);
-            if (isCancelled()) return;
-            if (onLoaded) onLoaded(item, image);
-          }
-        });
-        await Promise.all(workers);
-        return !isCancelled();
+      async function loadIntroFrames() {
+        const requests = [];
+        for (let frame = FIRST_FRAME; frame <= LAST_FRAME; frame += 1) {
+          requests.push(preloadImage(introFramePath(frame)));
+        }
+        const loadedFrames = await Promise.all(requests);
+        loadedFrames.forEach((image, index) => { introFrames[index] = image; });
       }
 
-      async function loadIntroFrames(isCancelled) {
-        // Frame 00 is already being fetched by the visible <img> tag.
-        const frames = Array.from({ length: LAST_FRAME - FIRST_FRAME }, (_, i) => ({
-          frame: FIRST_FRAME + i + 1,
-          url: introFramePath(FIRST_FRAME + i + 1)
-        }));
-        let failedFrames = 0;
-        const completed = await preloadWithLimit(
-          frames,
-          INTRO_PRELOAD_CONCURRENCY,
-          (_item, image) => { if (!image) failedFrames += 1; },
-          isCancelled
-        );
-        // No Image[] retained: browser HTTP cache can serve these URLs in playback.
-        return completed && failedFrames === 0;
-      }
-
-      async function loadHeroFrames(targetFrame) {
-        heroFrames.clear();
-        const direction = targetFrame >= DEFAULT_HERO_FRAME ? 1 : -1;
-        const frameCount = Math.abs(targetFrame - DEFAULT_HERO_FRAME) + 1;
-        // Request in playback order, beginning at hero36.
-        const frames = Array.from({ length: frameCount }, (_, i) => {
-          const frame = DEFAULT_HERO_FRAME + i * direction;
-          return { frame, url: heroFramePath(frame) };
-        });
-        await preloadWithLimit(frames, HERO_PRELOAD_CONCURRENCY, (item, image) => {
-          if (image) heroFrames.set(item.frame, image);
-        });
+      async function loadHeroFrames() {
+        const requests = [];
+        for (let frame = SEQUENCE_FIRST_FRAME; frame <= SEQUENCE_LAST_FRAME; frame += 1) {
+          requests.push(preloadImage(heroFramePath(frame)));
+        }
+        const loadedFrames = await Promise.all(requests);
+        loadedFrames.forEach((image, frame) => { heroFrames[frame] = image; });
       }
 
       function waitForHighRes() {
-        if (highResImage.complete) return Promise.resolve(highResImage.naturalWidth > 0);
+        if (highResImage.complete && highResImage.naturalWidth > 0) return Promise.resolve(true);
         return new Promise((resolve) => {
           highResImage.addEventListener("load", () => resolve(true), { once: true });
           highResImage.addEventListener("error", () => resolve(false), { once: true });
@@ -1054,7 +1026,8 @@
           function update(now) {
             const frameIndex = Math.min(Math.floor((now - startTime) / frameDuration), totalFrames - 1);
             if (frameIndex !== lastDisplayedIndex) {
-              sequenceImage.src = introFramePath(FIRST_FRAME + frameIndex);
+              const frame = introFrames[frameIndex];
+              if (frame) sequenceImage.src = frame.src;
               lastDisplayedIndex = frameIndex;
             }
             if (frameIndex < totalFrames - 1) requestAnimationFrame(update);
@@ -1428,7 +1401,7 @@
       }
 
       function displayHeroFrame(frame) {
-        const image = heroFrames.get(frame);
+        const image = heroFrames[frame];
         highResImage.src = image ? image.src : heroFramePath(frame);
         currentHeroFrame = frame;
       }
@@ -1469,7 +1442,8 @@
         const frame = LAST_FRAME - Math.round(progress * (LAST_FRAME - FIRST_FRAME));
         if (frame === lastScrollFrame) return;
 
-        sequenceImage.src = introFramePath(frame);
+        const image = introFrames[frame - FIRST_FRAME];
+        sequenceImage.src = image ? image.src : introFramePath(frame);
         lastScrollFrame = frame;
       }
 
@@ -1591,8 +1565,12 @@
         }
       }
 
-      // Large hover JPGs are loaded only when the corresponding product is used.
-      // On touch devices this avoids downloading all six overlays at startup.
+      function loadOverStates() {
+        overImages.forEach((image) => {
+          image.decoding = "async";
+          image.src = image.dataset.src;
+        });
+      }
 
       function showOverState(product) {
         activeOverProduct = product;
@@ -1606,10 +1584,6 @@
               if (activeOverProduct === product) image.classList.add("is-visible");
             };
 
-            if (!image.getAttribute("src")) {
-              image.decoding = "async";
-              image.src = image.dataset.src;
-            }
             if (image.complete && image.naturalWidth > 0) reveal();
             else image.addEventListener("load", reveal, { once: true });
           }
@@ -1877,7 +1851,7 @@
         );
 
         const hotspotExit = hideInterface();
-        await ensureHeroFramesReady(targetFrame);
+        await ensureHeroFramesReady();
         const sequencePlayback = playHeroSequence(DEFAULT_HERO_FRAME, targetFrame);
         const dialogReveal = wait(revealDelay).then(() => {
           setDialogProduct(selectedProduct);
@@ -1908,8 +1882,6 @@
         });
 
         await Promise.all([dialogExit, reversePlayback, interfaceReturn]);
-        // Drop 36-37 retained decoded frame objects after the reverse completes.
-        heroFrames.clear();
         selectedProduct = null;
         isBusy = false;
         productFlowActive = false;
@@ -1917,58 +1889,23 @@
         scheduleScrollUpdate();
       }
 
-      function shouldSkipIntro() {
-        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        const verySlowConnection = connection && ["slow-2g", "2g"].includes(connection.effectiveType);
-        const lowMemoryDevice = typeof navigator.deviceMemory === "number" && navigator.deviceMemory <= 2;
-        return Boolean(
-          connection?.saveData ||
-          verySlowConnection ||
-          lowMemoryDevice ||
-          window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        );
-      }
-
       async function startHero() {
+        showLoader(160);
         const highResReady = waitForHighRes();
-        let introWasPlayed = false;
+        const introReady = loadIntroFrames();
+        heroFramesReady = loadHeroFrames().then(() => {
+          heroFramesLoaded = true;
+        });
 
-        if (!shouldSkipIntro()) {
-          // Do not hold low-end phones on a full-screen loader for 33 files.
-          // On a fast/cached connection, the intro still plays exactly as before.
-          let cancelIntroPreload = false;
-          const introReady = loadIntroFrames(() => cancelIntroPreload);
-          const readyInTime = await Promise.race([
-            introReady,
-            wait(INTRO_STARTUP_BUDGET_MS).then(() => false)
-          ]);
-          if (readyInTime) {
-            await playIntro();
-            introWasPlayed = true;
-          } else {
-            // Prevent queued images from starting; at most four requests remain in flight.
-            cancelIntroPreload = true;
-          }
-        }
-
-        if (!introWasPlayed) {
-          // The final intro image remains available for the reverse-scroll effect.
-          sequenceImage.src = introFramePath(LAST_FRAME);
-          lastScrollFrame = LAST_FRAME;
-        }
-
-        // The poster loads in parallel; never block product controls on it.
-        if (highResImage.complete && highResImage.naturalWidth > 0) {
-          highResImage.classList.add("is-visible");
-        } else {
-          highResReady.then((ready) => {
-            if (ready) highResImage.classList.add("is-visible");
-          });
-        }
+        await introReady;
+        hideLoader();
+        await playIntro();
+        if (await highResReady) highResImage.classList.add("is-visible");
         renderHotspots();
         updatePanAvailability();
         bindOverStateEvents();
         bindProductButtonClicks();
+        loadOverStates();
         requestAnimationFrame(() => {
           hero.classList.add("ui-ready");
           requestAnimationFrame(() => {
@@ -2017,6 +1954,7 @@
       if (window.parent !== window) {
         window.parent.postMessage({ type: "wayne-viewer-ready", version: 1 }, "*");
       }
+      initializeLottieLoader();
       bindPanEvents();
       setupScrollExperience();
       startHero();
